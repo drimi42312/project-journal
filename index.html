@@ -46,23 +46,52 @@ input[type=date]{font-family:inherit;font-size:12px;padding:4px 6px;border:1px s
 .empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:15px}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .pname{font-size:17px;font-weight:600;flex:1}
+/* sync + auth */
+.sync{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.sync .sd{width:8px;height:8px;border-radius:50%;background:var(--gray)}
+.sync.ok .sd{background:var(--teal)} .sync.saving .sd{background:var(--amber)} .sync.off .sd{background:#A32D2D}
+#userbar{display:none;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+#auth{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
+.authcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:34px 30px;max-width:380px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.06)}
+.authcard h2{font-size:20px;margin:0 0 6px}
+.authcard p{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5}
+.authcard input{width:100%;font-family:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:12px;text-align:right}
+.authcard .btn{width:100%;padding:11px;font-size:15px;background:var(--text);color:#fff;border-color:var(--text)}
+#loginMsg{font-size:13px;margin-top:14px;min-height:18px;color:var(--teal)}
 </style>
 </head>
 <body>
 <header>
 <h1>יומן פרויקטים</h1>
 <div class="tabs" id="tabs"></div>
+<span class="sync" id="sync"><span class="sd"></span><span id="syncTxt"></span></span>
 <button class="btn" id="newProj">+ פרויקט חדש</button>
 <button class="btn" id="excelBtn" title="ייצוא כל הפרויקטים לקובץ אקסל">ייצוא לאקסל</button>
 <button class="btn" id="exportBtn" title="גיבוי לקובץ JSON">גיבוי</button>
 <button class="btn" id="importBtn" title="שחזור מקובץ JSON">שחזור</button>
 <input type="file" id="importFile" accept=".json" style="display:none">
+<span id="userbar"><span id="userEmail"></span><button class="btn" id="logoutBtn">יציאה</button></span>
 </header>
 <main>
 <div id="app"></div>
 </main>
+
+<div id="auth">
+<div class="authcard">
+<h2>יומן פרויקטים — לבנט</h2>
+<p>הנתונים מסונכרנים בין כל המכשירים. הזן את סיסמת הצוות פעם אחת במכשיר הזה.</p>
+<input type="password" id="loginEmail" placeholder="סיסמת הצוות" autocomplete="current-password">
+<button class="btn" id="loginBtn">כניסה</button>
+<div id="loginMsg"></div>
+</div>
+</div>
+
 <script>
 "use strict";
+/* ===== CONFIG ===== כתובת שרת הסנכרון (Railway). הסיסמה נשמרת מקומית, לא בקוד ===== */
+const API_BASE="https://project-journal-sync-production.up.railway.app";
+/* ================================================================= */
+
 const DEFAULT_STAGES=[
 ["תכנון ראשוני + הגשת תיק מידע","p"],
 ["דיוק תכנון ראשוני בהתאם לדרישות תיק מידע ומדידות + גיוס יועצים","p"],
@@ -85,7 +114,140 @@ const CAT_CYCLE={p:"g",g:"t",t:"p"};
 const KEY="project-journal-v1";
 let state={projects:[],cur:null};
 try{const s=localStorage.getItem(KEY);if(s)state=JSON.parse(s);}catch(e){}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+/* ---------- cloud sync layer ---------- */
+let TOKEN=localStorage.getItem("pj-token")||"";
+let sbReady=false,es=null;
+const CLIENT_ID=(function(){let v=localStorage.getItem("pj-client");if(!v){v=uid()+uid();localStorage.setItem("pj-client",v);}return v;})();
+const syncTimers={};
+const dirty=new Set();
+let editing=false,pendingRemote=false;
+function authHeaders(){return {Authorization:"Bearer "+TOKEN};}
+
+function setStatus(kind){
+const el=document.getElementById("sync"),t=document.getElementById("syncTxt");
+if(!el)return;
+el.className="sync"+(kind==="synced"?" ok":kind==="saving"?" saving":kind==="offline"?" off":"");
+t.textContent=kind==="synced"?"מסונכרן":kind==="saving"?"שומר…":kind==="offline"?"לא מקוון — יסונכרן בהמשך":"";
+}
+function cacheLocal(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function save(){cacheLocal();queueSync(state.cur);}
+
+function queueSync(id){
+if(!id||!sbReady)return;
+if(!state.projects.find(x=>x.id===id))return;
+setStatus("saving");
+clearTimeout(syncTimers[id]);
+syncTimers[id]=setTimeout(()=>pushProject(id),700);
+}
+async function pushProject(id){
+const p=state.projects.find(x=>x.id===id);
+if(!p||!TOKEN)return;
+const pos=state.projects.findIndex(x=>x.id===id);
+try{
+const r=await fetch(API_BASE+"/project",{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),
+body:JSON.stringify({id:p.id,name:p.name,stages:p.stages,pos:pos<0?0:pos,updated_by:CLIENT_ID})});
+if(!r.ok)throw new Error(r.status);
+dirty.delete(id);setStatus("synced");
+}catch(e){dirty.add(id);setStatus("offline");}
+}
+async function removeProjectRemote(id){
+dirty.delete(id);
+if(!TOKEN)return;
+try{await fetch(API_BASE+"/project?id="+encodeURIComponent(id)+"&by="+encodeURIComponent(CLIENT_ID),{method:"DELETE",headers:authHeaders()});}catch(e){}
+}
+async function pushAll(){for(const p of state.projects){await pushProject(p.id);}}
+
+async function loadFromCloud(){
+try{
+const r=await fetch(API_BASE+"/state",{headers:authHeaders()});
+if(!r.ok)throw new Error(r.status);
+const d=await r.json();
+const cloud=(d.projects||[]).map(x=>({id:x.id,name:x.name,stages:x.stages||[],pos:x.pos}));
+const migrated=localStorage.getItem("pj-migrated");
+if(cloud.length===0&&state.projects.length>0&&!migrated){
+// כניסה ראשונה: העלאת פרויקטים שהיו שמורים מקומית אל הענן (מיגרציה חד-פעמית)
+await pushAll();
+}else{
+state.projects=cloud;
+if(state.cur&&!state.projects.find(p=>p.id===state.cur))state.cur=null;
+if(!state.cur&&state.projects.length)state.cur=state.projects[0].id;
+}
+localStorage.setItem("pj-migrated","1");
+cacheLocal();setStatus("synced");
+}catch(e){setStatus("offline");}
+render();
+}
+function subscribeRealtime(){
+if(es)es.close();
+es=new EventSource(API_BASE+"/events?token="+encodeURIComponent(TOKEN));
+es.onmessage=ev=>{try{handleRemote(JSON.parse(ev.data));}catch(e){}};
+es.onerror=()=>setStatus("offline"); // EventSource מתחבר מחדש לבד
+}
+function handleRemote(msg){
+if(msg.type==="upsert"){
+const n=msg.project;
+if(!n||n.updated_by===CLIENT_ID)return; // ignore our own echo
+const inc={id:n.id,name:n.name,stages:n.stages||[],pos:n.pos};
+const i=state.projects.findIndex(p=>p.id===inc.id);
+if(i<0)state.projects.push(inc);else state.projects[i]=inc;
+state.projects.sort((a,b)=>(a.pos||0)-(b.pos||0));
+if(!state.cur)state.cur=inc.id;
+}else if(msg.type==="delete"){
+if(msg.updated_by===CLIENT_ID)return;
+state.projects=state.projects.filter(p=>p.id!==msg.id);
+if(state.cur&&!state.projects.find(p=>p.id===state.cur))state.cur=state.projects[0]?state.projects[0].id:null;
+}else return;
+cacheLocal();
+rerenderSafe();
+}
+function rerenderSafe(){if(editing){pendingRemote=true;}else render();}
+document.addEventListener("focusin",e=>{if(e.target.matches&&e.target.matches("input,textarea"))editing=true;});
+document.addEventListener("focusout",e=>{if(e.target.matches&&e.target.matches("input,textarea")){editing=false;if(pendingRemote){pendingRemote=false;render();}}});
+// retry any edits that failed while offline
+setInterval(()=>{if(sbReady&&dirty.size){[...dirty].forEach(pushProject);}},12000);
+
+/* ---------- auth (סיסמת צוות משותפת) ---------- */
+function onAuthed(){
+document.getElementById("auth").style.display="none";
+document.getElementById("userbar").style.display="flex";
+document.getElementById("userEmail").textContent="מחובר";
+if(!sbReady){sbReady=true;loadFromCloud();subscribeRealtime();}
+}
+function showLogin(){
+sbReady=false;
+document.getElementById("userbar").style.display="none";
+document.getElementById("auth").style.display="flex";
+}
+async function tryLogin(token){
+try{
+const r=await fetch(API_BASE+"/state",{headers:{Authorization:"Bearer "+token}});
+if(r.status===401)return false;
+if(!r.ok)throw new Error(r.status);
+TOKEN=token;localStorage.setItem("pj-token",token);
+onAuthed();return true;
+}catch(e){
+// שגיאת רשת — אם זו הסיסמה ששמורה כבר, נאפשר עבודה לא-מקוונת מהמטמון
+if(token&&token===localStorage.getItem("pj-token")){TOKEN=token;onAuthed();setStatus("offline");return true;}
+return false;
+}
+}
+async function initApp(){
+if(TOKEN){if(await tryLogin(TOKEN))return;TOKEN="";localStorage.removeItem("pj-token");}
+showLogin();
+}
+document.getElementById("loginBtn").onclick=async()=>{
+const pass=document.getElementById("loginEmail").value.trim();
+const msg=document.getElementById("loginMsg");
+if(!pass){msg.style.color="#A32D2D";msg.textContent="הזן סיסמה.";return;}
+msg.style.color="var(--muted)";msg.textContent="בודק…";
+const ok=await tryLogin(pass);
+if(!ok){msg.style.color="#A32D2D";msg.textContent="סיסמה שגויה.";}
+};
+document.getElementById("loginEmail").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginBtn").click();});
+document.getElementById("logoutBtn").onclick=()=>{TOKEN="";localStorage.removeItem("pj-token");if(es)es.close();showLogin();};
+
+/* ---------- app logic ---------- */
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function newStage(title,cat){return {t:title,c:cat||"g",s:"",e:"",d:null}}
 function proj(){return state.projects.find(p=>p.id===state.cur)}
@@ -105,7 +267,7 @@ state.projects.forEach(p=>{
 const b=document.createElement("button");
 b.className="tab"+(p.id===state.cur?" active":"");
 b.textContent=p.name;
-b.onclick=()=>{state.cur=p.id;save();render();};
+b.onclick=()=>{state.cur=p.id;cacheLocal();render();};
 el.appendChild(b);
 });
 }
@@ -126,7 +288,7 @@ bar.innerHTML=`<span class="pname">${esc(p.name)}</span>
 <button class="btn" id="delProj">מחיקת פרויקט</button>`;
 app.appendChild(bar);
 bar.querySelector("#renameProj").onclick=()=>{const n=prompt("שם חדש לפרויקט:",p.name);if(n&&n.trim()){p.name=n.trim();save();render();}};
-bar.querySelector("#delProj").onclick=()=>{if(confirm('למחוק את הפרויקט "'+p.name+'"? פעולה זו אינה הפיכה.')){state.projects=state.projects.filter(x=>x.id!==p.id);state.cur=state.projects.length?state.projects[0].id:null;save();render();}};
+bar.querySelector("#delProj").onclick=()=>{if(confirm('למחוק את הפרויקט "'+p.name+'"? פעולה זו אינה הפיכה.')){const id=p.id;state.projects=state.projects.filter(x=>x.id!==id);state.cur=state.projects.length?state.projects[0].id:null;removeProjectRemote(id);cacheLocal();render();}};
 
 const legend=document.createElement("div");
 legend.className="legend";
@@ -294,10 +456,12 @@ document.getElementById("importBtn").onclick=()=>document.getElementById("import
 document.getElementById("importFile").addEventListener("change",e=>{
 const f=e.target.files[0];if(!f)return;
 const r=new FileReader();
-r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects){state=d;save();render();}else alert("קובץ לא תקין");}catch(err){alert("קובץ לא תקין");}};
+r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects){state=d;cacheLocal();render();pushAll();}else alert("קובץ לא תקין");}catch(err){alert("קובץ לא תקין");}};
 r.readAsText(f);
 });
+
 render();
+initApp();
 </script>
 </body>
 </html>
