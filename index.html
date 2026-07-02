@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יומן פרויקטים — לבנט</title>
+<style>
+:root{--purple:#7F77DD;--gray:#888780;--teal:#1D9E75;--amber:#EF9F27;--amber-dark:#854F0B;
+--text:#2C2C2A;--muted:#8a8880;--border:#e3e1d9;--border2:#c9c7bd;--bg:#faf9f5;--card:#fff}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg);margin:0;padding:0}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:19px;font-weight:600;margin:0}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.tab{border:1px solid var(--border2);background:var(--card);border-radius:20px;padding:5px 16px;font-size:14px;cursor:pointer;color:var(--text)}
+.tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+.btn{font-family:inherit;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer}
+.btn:hover{border-color:var(--text)}
+.btn-add{border-style:dashed;color:var(--muted);background:none;font-size:12px;padding:2px 10px;border-radius:8px;border:1px dashed var(--border2);cursor:pointer}
+.btn-add:hover{color:var(--text);border-color:var(--text)}
+main{max-width:900px;margin:0 auto;padding:24px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:18px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:5px}
+.tl{border-right:2px solid var(--border);padding-right:20px;margin-right:8px}
+.stage{position:relative;padding-bottom:6px}
+.sdot{position:absolute;right:-27px;top:6px;width:14px;height:14px;border-radius:50%;cursor:pointer}
+.sdot.big{width:18px;height:18px;right:-29px;top:4px}
+.srow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.snum{font-size:13px;color:var(--muted);min-width:22px}
+.stitle{flex:1;min-width:180px;font-family:inherit;font-size:15px;color:var(--text);border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent}
+.stitle:hover,.stitle:focus{border-color:var(--border);background:var(--card);outline:none}
+.stitle.big{font-weight:600}
+label.dt{font-size:12px;color:var(--muted);white-space:nowrap}
+input[type=date]{font-family:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);width:132px}
+.dur{font-size:12px;color:var(--muted);min-width:80px}
+.x{border:none;background:none;color:#c9c7bd;cursor:pointer;font-size:13px;padding:2px 4px}
+.x:hover{color:#A32D2D}
+.zone{padding:3px 0 10px;display:flex;gap:10px}
+.delay{position:relative;border:1px solid var(--amber);border-radius:10px;padding:9px 12px;margin:2px 0 10px;background:#fdf8ef}
+.ddot{position:absolute;right:-27px;top:12px;width:14px;height:14px;border-radius:50%;background:var(--amber)}
+.dcause{flex:1;min-width:200px;font-family:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)}
+.ddur{font-size:13px;color:var(--amber-dark);font-weight:600;min-width:90px}
+.dnote{font-size:12px;color:var(--muted);margin-top:4px}
+.summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:20px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:12px;font-size:14px}
+.summary b{font-weight:600}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:15px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.pname{font-size:17px;font-weight:600;flex:1}
+</style>
+</head>
+<body>
+<header>
+<h1>יומן פרויקטים</h1>
+<div class="tabs" id="tabs"></div>
+<button class="btn" id="newProj">+ פרויקט חדש</button>
+<button class="btn" id="exportBtn" title="גיבוי לקובץ">ייצוא</button>
+<button class="btn" id="importBtn" title="שחזור מקובץ">ייבוא</button>
+<input type="file" id="importFile" accept=".json" style="display:none">
+</header>
+<main>
+<div id="app"></div>
+</main>
+<script>
+"use strict";
+const DEFAULT_STAGES=[
+["תכנון ראשוני + הגשת תיק מידע","p"],
+["דיוק תכנון ראשוני בהתאם לדרישות תיק מידע ומדידות + גיוס יועצים","p"],
+["אישור יזם לתכנון","t"],
+["התנעת יועצים — תיאום יועצים לשלב ההגשה","p"],
+["הגשה + קליטה","t"],
+["התחלת תיאום מכון בקרה — הטענת מסמכים","g"],
+["סגירת תחנות מכון רישוי","g"],
+["המשך תיאום יועצים לסגירת נספחים","p"],
+["החלטת ועדה","t"],
+["התחלת עבודה על טופס 2","p"],
+["הטענת נספחים סופית למכון בקרה","g"],
+["אישור מכון בקרה תכן + התחלת עבודה על תוכניות 1:50 ורשימות","t"],
+["אישור איכות סביבה","g"],
+["בדיקה סופית","g"],
+["אגרות השבחה","g"]];
+const COLORS={p:"var(--purple)",g:"var(--gray)",t:"var(--teal)"};
+const CAT_NAMES={p:"תכנון ויועצים",g:"עירייה / מכון רישוי ובקרה",t:"אבן דרך"};
+const CAT_CYCLE={p:"g",g:"t",t:"p"};
+const KEY="project-journal-v1";
+let state={projects:[],cur:null};
+try{const s=localStorage.getItem(KEY);if(s)state=JSON.parse(s);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function newStage(title,cat){return {t:title,c:cat||"g",s:"",e:"",d:null}}
+function proj(){return state.projects.find(p=>p.id===state.cur)}
+function days(a,b){return (new Date(b)-new Date(a))/864e5}
+function wk(d){
+const w=(d/7).toFixed(1).replace(/\.0$/,"");
+if(d>=28){const m=(d/30.4).toFixed(1).replace(/\.0$/,"");return w+" שב' (~"+m+" חוד')"}
+return w+" שב'";
+}
+function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function today(){return new Date().toISOString().slice(0,10)}
+
+function renderTabs(){
+const el=document.getElementById("tabs");
+el.innerHTML="";
+state.projects.forEach(p=>{
+const b=document.createElement("button");
+b.className="tab"+(p.id===state.cur?" active":"");
+b.textContent=p.name;
+b.onclick=()=>{state.cur=p.id;save();render();};
+el.appendChild(b);
+});
+}
+
+function render(){
+renderTabs();
+const app=document.getElementById("app");
+const p=proj();
+if(!p){
+app.innerHTML='<div class="empty">אין עדיין פרויקטים.<br>לחץ על "+ פרויקט חדש" כדי להתחיל — כל פרויקט מקבל טיים ליין רישוי מלא.</div>';
+return;
+}
+app.innerHTML="";
+const bar=document.createElement("div");
+bar.className="toolbar";
+bar.innerHTML=`<span class="pname">${esc(p.name)}</span>
+<button class="btn" id="renameProj">שינוי שם</button>
+<button class="btn" id="delProj">מחיקת פרויקט</button>`;
+app.appendChild(bar);
+bar.querySelector("#renameProj").onclick=()=>{const n=prompt("שם חדש לפרויקט:",p.name);if(n&&n.trim()){p.name=n.trim();save();render();}};
+bar.querySelector("#delProj").onclick=()=>{if(confirm('למחוק את הפרויקט "'+p.name+'"? פעולה זו אינה הפיכה.')){state.projects=state.projects.filter(x=>x.id!==p.id);state.cur=state.projects.length?state.projects[0].id:null;save();render();}};
+
+const legend=document.createElement("div");
+legend.className="legend";
+legend.innerHTML=`<span><span class="dot" style="background:var(--purple)"></span>תכנון ויועצים</span>
+<span><span class="dot" style="background:var(--gray)"></span>עירייה / מכון רישוי ובקרה</span>
+<span><span class="dot" style="background:var(--teal)"></span>אבן דרך</span>
+<span><span class="dot" style="background:var(--amber)"></span>עיכוב</span>
+<span style="color:var(--muted)">לחיצה על עיגול של שלב מחליפה קטגוריה</span>`;
+app.appendChild(legend);
+
+const tl=document.createElement("div");
+tl.className="tl";
+p.stages.forEach((st,i)=>{
+const big=st.c==="t";
+const row=document.createElement("div");
+row.className="stage";
+row.innerHTML=`<span class="sdot${big?" big":""}" style="background:${COLORS[st.c]}" title="${CAT_NAMES[st.c]} — לחץ להחלפה" data-cyc="${i}"></span>
+<div class="srow">
+<span class="snum">${i+1}.</span>
+<input class="stitle${big?" big":""}" data-t="${i}" value="${esc(st.t)}">
+<label class="dt">התחלה <input type="date" data-ds="${i}" value="${st.s}"></label>
+<label class="dt">סיום <input type="date" data-de="${i}" value="${st.e}"></label>
+<span class="dur" id="dur${i}"></span>
+<button class="x" data-rmstage="${i}" title="מחק שלב">✕</button>
+</div>`;
+tl.appendChild(row);
+
+if(st.d){
+const dv=document.createElement("div");
+dv.className="delay";
+dv.innerHTML=`<span class="ddot"></span>
+<div class="srow">
+<span style="font-size:14px;color:var(--amber-dark);font-weight:600">עיכוב:</span>
+<input class="dcause" data-dc="${i}" value="${esc(st.d.cause)}" placeholder="הגורם המעכב — יזם, עירייה, יועץ, דיירים...">
+<label class="dt">מתאריך <input type="date" data-dds="${i}" value="${st.d.s}"></label>
+<label class="dt">עד תאריך <input type="date" data-dde="${i}" value="${st.d.e}"></label>
+<span class="ddur" id="ddur${i}"></span>
+<button class="x" data-rmdelay="${i}" title="הסר עיכוב">✕</button>
+</div>
+<div class="dnote" id="dnote${i}"></div>`;
+tl.appendChild(dv);
+}
+const zone=document.createElement("div");
+zone.className="zone";
+zone.innerHTML=(st.d?"":`<button class="btn-add" data-adddelay="${i}">+ הוסף עיכוב</button>`)+
+`<button class="btn-add" data-addstage="${i}">+ הוסף שלב</button>`;
+tl.appendChild(zone);
+});
+app.appendChild(tl);
+
+const sum=document.createElement("div");
+sum.className="summary";
+sum.innerHTML=`<div>עבודה נטו: <b id="net">—</b></div>
+<div>סך עיכובים: <b id="dly">—</b></div>
+<div>מקצה לקצה: <b id="gross">—</b></div>`;
+app.appendChild(sum);
+
+wire(p);
+recalc(p);
+}
+
+function wire(p){
+const app=document.getElementById("app");
+app.querySelectorAll("input[data-t]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.t].t=e.target.value;save();}));
+app.querySelectorAll("input[data-ds]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.ds].s=e.target.value;save();recalc(p);}));
+app.querySelectorAll("input[data-de]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.de].e=e.target.value;save();recalc(p);}));
+app.querySelectorAll("input[data-dc]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dc].d.cause=e.target.value;save();}));
+app.querySelectorAll("input[data-dds]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dds].d.s=e.target.value;save();recalc(p);}));
+app.querySelectorAll("input[data-dde]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dde].d.e=e.target.value;save();recalc(p);}));
+app.querySelectorAll("[data-cyc]").forEach(el=>el.addEventListener("click",e=>{const i=+e.target.dataset.cyc;p.stages[i].c=CAT_CYCLE[p.stages[i].c];save();render();}));
+app.querySelectorAll("[data-adddelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.target.dataset.adddelay].d={cause:"",s:"",e:""};save();render();}));
+app.querySelectorAll("[data-rmdelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.target.dataset.rmdelay].d=null;save();render();}));
+app.querySelectorAll("[data-addstage]").forEach(el=>el.addEventListener("click",e=>{
+const i=+e.target.dataset.addstage;
+const name=prompt("שם השלב החדש:");
+if(name&&name.trim()){p.stages.splice(i+1,0,newStage(name.trim(),"g"));save();render();}
+}));
+app.querySelectorAll("[data-rmstage]").forEach(el=>el.addEventListener("click",e=>{
+const i=+e.target.dataset.rmstage;
+if(confirm('למחוק את השלב "'+p.stages[i].t+'"?')){p.stages.splice(i,1);save();render();}
+}));
+}
+
+function recalc(p){
+let net=0,dl=0;
+p.stages.forEach((st,i)=>{
+const el=document.getElementById("dur"+i);
+if(st.s&&st.e&&days(st.s,st.e)>=0){net+=days(st.s,st.e);el.textContent=wk(days(st.s,st.e));}
+else if(el)el.textContent="";
+if(st.d){
+const de=document.getElementById("ddur"+i),note=document.getElementById("dnote"+i);
+if(st.d.s&&st.d.e&&days(st.d.s,st.d.e)>=0){dl+=days(st.d.s,st.d.e);de.textContent=wk(days(st.d.s,st.d.e));note.textContent="";}
+else if(st.d.s&&!st.d.e){
+const run=days(st.d.s,today());
+if(run>=0){dl+=run;de.textContent=wk(run)+" ⏳";note.textContent="עיכוב פתוח — נספר עד היום. השלב הבא ייספר רק מתאריך הסיום";}
+}
+else{de.textContent="";note.textContent="";}
+}
+});
+document.getElementById("net").textContent=net?wk(net):"—";
+document.getElementById("dly").textContent=dl?wk(dl):"—";
+const withDates=p.stages.filter(s=>s.s||s.e);
+if(withDates.length){
+const starts=p.stages.map(s=>s.s).filter(Boolean).sort();
+const ends=p.stages.map(s=>s.e).filter(Boolean).sort();
+if(starts.length&&ends.length){
+document.getElementById("gross").textContent=(days(starts[0],ends[ends.length-1])/30.4).toFixed(1)+" חודשים";
+return;
+}
+}
+document.getElementById("gross").textContent="—";
+}
+
+document.getElementById("newProj").onclick=()=>{
+const name=prompt("שם הפרויקט (למשל: ישראל מריזין 5):");
+if(!name||!name.trim())return;
+const p={id:uid(),name:name.trim(),stages:DEFAULT_STAGES.map(s=>newStage(s[0],s[1]))};
+state.projects.push(p);state.cur=p.id;save();render();
+};
+document.getElementById("exportBtn").onclick=()=>{
+const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="project-journal-backup.json";
+a.click();
+};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").addEventListener("change",e=>{
+const f=e.target.files[0];if(!f)return;
+const r=new FileReader();
+r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects){state=d;save();render();}else alert("קובץ לא תקין");}catch(err){alert("קובץ לא תקין");}};
+r.readAsText(f);
+});
+render();
+</script>
+</body>
+</html>
