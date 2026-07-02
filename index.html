@@ -53,8 +53,9 @@ input[type=date]{font-family:inherit;font-size:12px;padding:4px 6px;border:1px s
 <h1>יומן פרויקטים</h1>
 <div class="tabs" id="tabs"></div>
 <button class="btn" id="newProj">+ פרויקט חדש</button>
-<button class="btn" id="exportBtn" title="גיבוי לקובץ">ייצוא</button>
-<button class="btn" id="importBtn" title="שחזור מקובץ">ייבוא</button>
+<button class="btn" id="excelBtn" title="ייצוא כל הפרויקטים לקובץ אקסל">ייצוא לאקסל</button>
+<button class="btn" id="exportBtn" title="גיבוי לקובץ JSON">גיבוי</button>
+<button class="btn" id="importBtn" title="שחזור מקובץ JSON">שחזור</button>
 <input type="file" id="importFile" accept=".json" style="display:none">
 </header>
 <main>
@@ -245,6 +246,43 @@ if(!name||!name.trim())return;
 const p={id:uid(),name:name.trim(),stages:DEFAULT_STAGES.map(s=>newStage(s[0],s[1]))};
 state.projects.push(p);state.cur=p.id;save();render();
 };
+document.getElementById("excelBtn").onclick=()=>{
+if(window.XLSX){doExcel();return;}
+const s=document.createElement("script");
+s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+s.onload=doExcel;
+s.onerror=()=>alert("טעינת ספריית האקסל נכשלה — נדרש חיבור לאינטרנט");
+document.head.appendChild(s);
+};
+function doExcel(){
+if(!state.projects.length){alert("אין פרויקטים לייצוא");return;}
+const wb=XLSX.utils.book_new();
+wb.Workbook={Views:[{RTL:true}]};
+state.projects.forEach(p=>{
+const rows=[["#","שלב","קטגוריה","תאריך התחלה","תאריך סיום","משך (שבועות)","גורם מעכב","עיכוב מתאריך","עיכוב עד","משך עיכוב (שבועות)"]];
+let net=0,dl=0;
+p.stages.forEach((st,i)=>{
+const durD=(st.s&&st.e&&days(st.s,st.e)>=0)?days(st.s,st.e):null;
+if(durD!=null)net+=durD;
+let dcause="",dds="",dde="",ddur=null;
+if(st.d){
+dcause=st.d.cause||"";dds=st.d.s||"";dde=st.d.e||"";
+if(st.d.s&&st.d.e&&days(st.d.s,st.d.e)>=0)ddur=days(st.d.s,st.d.e);
+else if(st.d.s&&!st.d.e){const r=days(st.d.s,today());if(r>=0){ddur=r;dde="פתוח (עד היום)";}}
+if(ddur!=null)dl+=ddur;
+}
+rows.push([i+1,st.t,CAT_NAMES[st.c],st.s||"",st.e||"",durD!=null?+(durD/7).toFixed(1):"",dcause,dds,dde,ddur!=null?+(ddur/7).toFixed(1):""]);
+});
+rows.push([]);
+rows.push(["","סה\"כ עבודה נטו (שבועות)","","","",+(net/7).toFixed(1),"סה\"כ עיכובים (שבועות)","","",+(dl/7).toFixed(1)]);
+const ws=XLSX.utils.aoa_to_sheet(rows);
+ws["!cols"]=[{wch:4},{wch:52},{wch:24},{wch:13},{wch:13},{wch:15},{wch:30},{wch:13},{wch:15},{wch:18}];
+let base=(p.name.replace(/[\\\/\?\*\[\]:]/g," ").trim()||"פרויקט").slice(0,31),name=base,n=1;
+while(wb.SheetNames.includes(name))name=base.slice(0,28)+" "+(++n);
+XLSX.utils.book_append_sheet(wb,ws,name);
+});
+XLSX.writeFile(wb,"יומן-פרויקטים.xlsx");
+}
 document.getElementById("exportBtn").onclick=()=>{
 const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
 const a=document.createElement("a");
