@@ -75,6 +75,45 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 .pick-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .modal-foot{display:flex;gap:10px;margin-top:16px}
 .modal-foot .btn{flex:1;justify-content:center}
+.tmodal label{display:block;font-size:13px;color:var(--muted);margin:13px 0 5px}
+.tmodal select{width:100%;font-family:inherit;font-size:14px;padding:10px 11px;border:1px solid var(--border2);border-radius:9px;background:var(--card);color:var(--text)}
+.tmodal select:focus{outline:none;border-color:var(--purple)}
+/* planning targets board */
+.tgt-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.tgt-title{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:6px 13px;border:1.5px solid var(--border2);border-radius:22px;background:var(--card);user-select:none}
+.toggle .sw{width:15px;height:15px;border-radius:5px;border:2px solid var(--border2)}
+.toggle.tg{color:var(--purple)} .toggle.ac{color:var(--teal)}
+.toggle.on{border-color:currentColor} .toggle.on .sw{background:currentColor;border-color:currentColor}
+.board{display:flex;overflow-x:auto;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow)}
+.yearcol{flex:none;border-left:2px solid var(--border)}
+.yearcol:last-child{border-left:none}
+.yearhead{text-align:center;font-weight:700;font-size:15px;padding:9px;background:var(--bg);border-bottom:1px solid var(--border)}
+.quarters{display:flex}
+.qcol{flex:none;width:176px;border-left:1px solid var(--border);min-height:340px;display:flex;flex-direction:column}
+.qcol:last-child{border-left:none}
+.qcol.now{background:#f6fcfa}
+.qhead{font-size:13px;text-align:center;padding:7px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted)}
+.qhead.now{color:var(--teal)}
+.qbody{padding:9px;display:flex;flex-direction:column;gap:8px;flex:1}
+.tcard{border-radius:10px;padding:8px 10px 9px;font-size:13px;border:1.5px solid var(--border2);position:relative}
+.tcard.plan{border-style:dashed;border-color:var(--purple);background:var(--purple-bg)}
+.tcard.act-ontime{border-color:var(--teal);background:var(--teal-bg)}
+.tcard.act-late{border-color:var(--amber);background:#fdf4e6}
+.tcard.act-early{border-color:#5b8def;background:#eef3fc}
+.tcard.ghost{opacity:.55}
+.tcard .pj{font-weight:700;font-size:12px;padding-left:34px}
+.tcard .stg{margin-top:3px;line-height:1.35}
+.badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.badge.ontime{background:var(--teal-bg);color:var(--teal)} .badge.late{background:#fbe6c4;color:var(--amber-dark)}
+.badge.early{background:#eef3fc;color:#3a63b8} .badge.pending{background:var(--gray-bg);color:var(--muted)}
+.tcard .ctl{position:absolute;top:6px;left:6px;display:flex;gap:1px}
+.tcard .ctl button{border:none;background:none;cursor:pointer;color:var(--muted);font-size:13px;padding:1px 4px;border-radius:5px;line-height:1}
+.tcard .ctl button:hover{background:rgba(0,0,0,.07);color:var(--text)}
+.addtgt{margin-top:auto;border:1px dashed var(--border2);color:var(--muted);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:13px}
+.addtgt:hover{border-color:var(--text);color:var(--text)}
+.tab.tgttab{border-color:var(--purple);color:var(--purple)}
+.tab.tgttab.active{background:var(--purple);color:#fff;border-color:var(--purple)}
 /* sync + auth */
 .sync{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:5px}
 .sync .sd{width:8px;height:8px;border-radius:50%;background:var(--gray)}
@@ -122,6 +161,23 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 </div>
 </div>
 
+<!-- target modal -->
+<div class="modalbg" id="tmodal">
+<div class="modal tmodal">
+<h3>🎯 הוספת יעד</h3>
+<label>פרויקט</label>
+<select id="tProject"></select>
+<label>שלב</label>
+<select id="tStage"></select>
+<label>רבעון יעד</label>
+<select id="tQuarter"></select>
+<div class="modal-foot">
+<button class="btn primary" id="tAdd">הוסף יעד</button>
+<button class="btn" id="tClose">ביטול</button>
+</div>
+</div>
+</div>
+
 <!-- login -->
 <div id="auth">
 <div class="authcard">
@@ -165,8 +221,14 @@ const CAT_NAMES={p:"תכנון ויועצים",g:"עירייה / מכון ריש
 const CAT_ICON={p:"✏️",g:"🏛️",t:"🚩"};
 const CAT_CYCLE={p:"g",g:"t",t:"p"};
 const KEY="project-journal-v1";
-let state={projects:[],cur:null};
+const TARGETS_ID="__targets__";
+const NOW_Y=new Date().getFullYear();
+const YEARS=[NOW_Y,NOW_Y+1,NOW_Y+2];
+let state={projects:[],cur:null,targets:[]};
 try{const s=localStorage.getItem(KEY);if(s)state=JSON.parse(s);}catch(e){}
+if(!Array.isArray(state.targets))state.targets=[];
+let view=localStorage.getItem("pj-view")||"projects";
+let layers={target:true,actual:true};
 
 /* ---------- cloud sync layer ---------- */
 let TOKEN=localStorage.getItem("pj-token")||"";
@@ -210,13 +272,33 @@ if(!TOKEN)return;
 try{await fetch(API_BASE+"/project?id="+encodeURIComponent(id)+"&by="+encodeURIComponent(CLIENT_ID),{method:"DELETE",headers:authHeaders()});}catch(e){}
 }
 async function pushAll(){for(const p of state.projects){await pushProject(p.id);}}
+let targetTimer=null;
+function saveTargets(){
+cacheLocal();
+if(!sbReady)return;
+setStatus("saving");
+clearTimeout(targetTimer);
+targetTimer=setTimeout(pushTargets,700);
+}
+async function pushTargets(){
+if(!TOKEN)return;
+try{
+const r=await fetch(API_BASE+"/project",{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),
+body:JSON.stringify({id:TARGETS_ID,name:"__targets__",stages:state.targets,pos:9999,updated_by:CLIENT_ID})});
+if(!r.ok)throw new Error(r.status);
+dirty.delete(TARGETS_ID);setStatus("synced");
+}catch(e){dirty.add(TARGETS_ID);setStatus("offline");}
+}
 
 async function loadFromCloud(){
 try{
 const r=await fetch(API_BASE+"/state",{headers:authHeaders()});
 if(!r.ok)throw new Error(r.status);
 const d=await r.json();
-const cloud=(d.projects||[]).map(x=>({id:x.id,name:x.name,stages:x.stages||[],pos:x.pos}));
+const rows=d.projects||[];
+const tRow=rows.find(x=>x.id===TARGETS_ID);
+if(tRow&&Array.isArray(tRow.stages))state.targets=tRow.stages;
+const cloud=rows.filter(x=>x.id!==TARGETS_ID).map(x=>({id:x.id,name:x.name,stages:x.stages||[],pos:x.pos}));
 const migrated=localStorage.getItem("pj-migrated");
 if(cloud.length===0&&state.projects.length>0&&!migrated){
 // כניסה ראשונה: העלאת פרויקטים שהיו שמורים מקומית אל הענן (מיגרציה חד-פעמית)
@@ -241,6 +323,7 @@ function handleRemote(msg){
 if(msg.type==="upsert"){
 const n=msg.project;
 if(!n||n.updated_by===CLIENT_ID)return; // ignore our own echo
+if(n.id===TARGETS_ID){state.targets=Array.isArray(n.stages)?n.stages:[];cacheLocal();rerenderSafe();return;}
 const inc={id:n.id,name:n.name,stages:n.stages||[],pos:n.pos};
 const i=state.projects.findIndex(p=>p.id===inc.id);
 if(i<0)state.projects.push(inc);else state.projects[i]=inc;
@@ -248,6 +331,7 @@ state.projects.sort((a,b)=>(a.pos||0)-(b.pos||0));
 if(!state.cur)state.cur=inc.id;
 }else if(msg.type==="delete"){
 if(msg.updated_by===CLIENT_ID)return;
+if(msg.id===TARGETS_ID){state.targets=[];cacheLocal();rerenderSafe();return;}
 state.projects=state.projects.filter(p=>p.id!==msg.id);
 if(state.cur&&!state.projects.find(p=>p.id===state.cur))state.cur=state.projects[0]?state.projects[0].id:null;
 }else return;
@@ -257,7 +341,7 @@ rerenderSafe();
 function rerenderSafe(){if(editing){pendingRemote=true;}else render();}
 document.addEventListener("focusin",e=>{if(e.target.matches&&e.target.matches("input,textarea"))editing=true;});
 document.addEventListener("focusout",e=>{if(e.target.matches&&e.target.matches("input,textarea")){editing=false;if(pendingRemote){pendingRemote=false;render();}}});
-setInterval(()=>{if(sbReady&&dirty.size){[...dirty].forEach(pushProject);}},12000);
+setInterval(()=>{if(sbReady&&dirty.size){[...dirty].forEach(id=>id===TARGETS_ID?pushTargets():pushProject(id));}},12000);
 
 /* ---------- auth (סיסמת צוות משותפת) ---------- */
 function onAuthed(){
@@ -310,22 +394,44 @@ return w+" שב'";
 }
 function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function today(){return new Date().toISOString().slice(0,10)}
+function qidx(y,q){return y*4+(q-1)}
+function qKey(y,q){return y+"-Q"+q}
+function parseQ(k){const m=/^(\d+)-Q(\d)$/.exec(k||"");if(!m)return null;const y=+m[1],q=+m[2];return {y,q,idx:qidx(y,q)}}
+function quarterOfDate(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return null;const y=d.getFullYear(),q=Math.floor(d.getMonth()/3)+1;return {y,q,idx:qidx(y,q)}}
+function resolveStage(p,t){
+if(!p)return null;
+if(typeof t.si==="number"&&p.stages[t.si]&&p.stages[t.si].t===t.st)return p.stages[t.si];
+return p.stages.find(s=>s.t===t.st)||null;
+}
+function actualQuarter(t){
+const p=state.projects.find(x=>x.id===t.pid);
+const st=resolveStage(p,t);
+if(!st)return null;
+return quarterOfDate(st.e||st.s);
+}
 
+function setView(v){view=v;localStorage.setItem("pj-view",v);}
 function renderTabs(){
 const el=document.getElementById("tabs");
 el.innerHTML="";
 state.projects.forEach(p=>{
 const b=document.createElement("button");
-b.className="tab"+(p.id===state.cur?" active":"");
+b.className="tab"+(view==="projects"&&p.id===state.cur?" active":"");
 b.textContent=p.name;
-b.onclick=()=>{state.cur=p.id;cacheLocal();render();};
+b.onclick=()=>{state.cur=p.id;setView("projects");cacheLocal();render();};
 el.appendChild(b);
 });
+const tg=document.createElement("button");
+tg.className="tab tgttab"+(view==="targets"?" active":"");
+tg.textContent="🎯 יעדי תכנון";
+tg.onclick=()=>{setView("targets");render();};
+el.appendChild(tg);
 }
 
 function render(){
 renderTabs();
 const app=document.getElementById("app");
+if(view==="targets"){renderTargets(app);return;}
 const p=proj();
 if(!p){
 app.innerHTML='<div class="empty"><div class="big">🏗️</div><p>אין עדיין פרויקטים.<br>לחץ על "＋ פרויקט חדש" כדי להתחיל.</p></div>';
@@ -458,6 +564,131 @@ if(all.length>=2){all.sort();document.getElementById("gross").textContent=(days(
 else document.getElementById("gross").textContent="—";
 }
 
+/* ---------- planning targets ---------- */
+function renderTargets(app){
+app.innerHTML="";
+const items=state.targets.map(t=>{
+const p=state.projects.find(x=>x.id===t.pid);
+const tq=parseQ(t.q);
+const aq=actualQuarter(t);
+let status="pending",delta=null;
+if(aq){delta=aq.idx-(tq?tq.idx:aq.idx);status=delta>0?"late":delta<0?"early":"ontime";}
+return {t,p,tq,aq,status,delta};
+});
+
+const head=document.createElement("div");
+head.className="tgt-head";
+head.innerHTML=`<span class="tgt-title">🎯 יעדי תכנון</span>
+<span class="toggle tg${layers.target?" on":""}" id="tgTarget"><span class="sw"></span>יעדים</span>
+<span class="toggle ac${layers.actual?" on":""}" id="tgActual"><span class="sw"></span>בפועל</span>`;
+app.appendChild(head);
+head.querySelector("#tgTarget").onclick=()=>{layers.target=!layers.target;render();};
+head.querySelector("#tgActual").onclick=()=>{layers.actual=!layers.actual;render();};
+
+const lg=document.createElement("div");
+lg.className="legend";
+lg.innerHTML=`<span><span class="lchip" style="background:var(--purple-bg)">🎯</span>יעד מתוכנן</span>
+<span><span class="lchip tint-t">✅</span>בפועל — בזמן</span>
+<span><span class="lchip" style="background:#fdf4e6">🔴</span>באיחור</span>
+<span><span class="lchip" style="background:#eef3fc">🔵</span>מוקדם</span>
+<span><span class="lchip tint-g">⏳</span>טרם בוצע</span>`;
+app.appendChild(lg);
+
+if(!state.projects.length){
+const e=document.createElement("div");e.className="empty";
+e.innerHTML='<div class="big">🎯</div><p>כדי להוסיף יעדים צריך קודם ליצור פרויקט עם שלבים.</p>';
+app.appendChild(e);return;
+}
+
+const board=document.createElement("div");
+board.className="board";
+const nowQ=quarterOfDate(today());
+YEARS.forEach(y=>{
+const yc=document.createElement("div");yc.className="yearcol";
+let cols="";
+for(let q=1;q<=4;q++){
+const isNow=nowQ&&nowQ.y===y&&nowQ.q===q;
+cols+=`<div class="qcol${isNow?" now":""}">
+<div class="qhead${isNow?" now":""}">רבעון ${q}${isNow?" · היום":""}</div>
+<div class="qbody" data-qb="${qKey(y,q)}"></div></div>`;
+}
+yc.innerHTML=`<div class="yearhead">${y}</div><div class="quarters">${cols}</div>`;
+board.appendChild(yc);
+});
+app.appendChild(board);
+
+YEARS.forEach(y=>{for(let q=1;q<=4;q++){
+const body=board.querySelector(`[data-qb="${qKey(y,q)}"]`);
+const idx=qidx(y,q);
+if(layers.target)items.filter(it=>it.tq&&it.tq.idx===idx).forEach(it=>body.appendChild(targetCard(it)));
+if(layers.actual)items.filter(it=>it.aq&&it.aq.idx===idx).forEach(it=>body.appendChild(actualCard(it)));
+const add=document.createElement("button");
+add.className="addtgt";add.textContent="＋ יעד";
+add.onclick=()=>openTargetModal(qKey(y,q));
+body.appendChild(add);
+}});
+}
+function targetCard(it){
+const c=document.createElement("div");c.className="tcard plan"+(it.p?"":" ghost");
+const pname=it.p?esc(it.p.name):"⚠️ פרויקט נמחק";
+let badge;
+if(it.aq===null)badge=`<span class="badge pending">⏳ טרם בוצע</span>`;
+else if(it.status==="ontime")badge=`<span class="badge ontime">✅ בזמן</span>`;
+else if(it.status==="late")badge=`<span class="badge late">🔴 באיחור +${it.delta} רבע'</span>`;
+else badge=`<span class="badge early">🔵 מוקדם ${-it.delta} רבע'</span>`;
+c.innerHTML=`<div class="ctl"><button data-mv="1" title="רבעון קודם">›</button><button data-mv="-1" title="רבעון הבא">‹</button><button data-del title="הסר">✕</button></div>
+<div class="pj">🎯 ${pname}</div><div class="stg">${esc(it.t.st)}</div>${badge}`;
+c.querySelector("[data-del]").onclick=()=>removeTarget(it.t);
+c.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>moveTarget(it.t,+b.dataset.mv));
+return c;
+}
+function actualCard(it){
+const c=document.createElement("div");
+c.className="tcard "+(it.status==="late"?"act-late":it.status==="early"?"act-early":"act-ontime");
+const pname=it.p?esc(it.p.name):"⚠️";
+let badge;
+if(it.status==="ontime")badge=`<span class="badge ontime">✅ בזמן</span>`;
+else if(it.status==="late")badge=`<span class="badge late">🔴 +${it.delta} רבע' מהיעד</span>`;
+else badge=`<span class="badge early">🔵 ${-it.delta} רבע' לפני היעד</span>`;
+c.innerHTML=`<div class="pj">📌 ${pname}</div><div class="stg">${esc(it.t.st)}</div>${badge}`;
+return c;
+}
+function removeTarget(t){state.targets=state.targets.filter(x=>x!==t);saveTargets();render();}
+function moveTarget(t,delta){
+const cur=parseQ(t.q);if(!cur)return;
+const lo=qidx(YEARS[0],1),hi=qidx(YEARS[2],4);
+const ni=Math.max(lo,Math.min(hi,cur.idx+delta));
+t.q=qKey(Math.floor(ni/4),ni%4+1);saveTargets();render();
+}
+function fillStageSelect(){
+const p=state.projects.find(x=>x.id===document.getElementById("tProject").value);
+const ss=document.getElementById("tStage");
+if(!p||!p.stages.length){ss.innerHTML='<option value="">— אין שלבים בפרויקט זה —</option>';return;}
+ss.innerHTML=p.stages.map((s,i)=>`<option value="${i}">${esc(s.t)}</option>`).join("");
+}
+function openTargetModal(presetQ){
+const ps=document.getElementById("tProject");
+ps.innerHTML=state.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+fillStageSelect();
+let opts="";YEARS.forEach(y=>{for(let q=1;q<=4;q++){const k=qKey(y,q);opts+=`<option value="${k}"${k===presetQ?" selected":""}>${y} · רבעון ${q}</option>`;}});
+document.getElementById("tQuarter").innerHTML=opts;
+document.getElementById("tmodal").style.display="flex";
+}
+document.getElementById("tProject").onchange=fillStageSelect;
+document.getElementById("tClose").onclick=()=>document.getElementById("tmodal").style.display="none";
+document.getElementById("tmodal").addEventListener("click",e=>{if(e.target.id==="tmodal")document.getElementById("tmodal").style.display="none";});
+document.getElementById("tAdd").onclick=()=>{
+const pid=document.getElementById("tProject").value;
+const si=document.getElementById("tStage").value;
+const q=document.getElementById("tQuarter").value;
+const p=state.projects.find(x=>x.id===pid);
+if(!p||si===""){alert("בחר פרויקט ושלב (ודא שיש שלבים בפרויקט)");return;}
+state.targets.push({id:uid(),pid:pid,st:p.stages[+si].t,si:+si,q:q});
+saveTargets();
+document.getElementById("tmodal").style.display="none";
+render();
+};
+
 /* ---------- stage picker ---------- */
 let pickerIndex=null;
 function openPicker(index){
@@ -495,7 +726,7 @@ document.getElementById("newProj").onclick=()=>{
 const name=prompt("שם הפרויקט (למשל: ישראל מריזין 5):");
 if(!name||!name.trim())return;
 const p={id:uid(),name:name.trim(),stages:[]};
-state.projects.push(p);state.cur=p.id;save();render();
+state.projects.push(p);state.cur=p.id;setView("projects");save();render();
 };
 document.getElementById("excelBtn").onclick=()=>{
 if(window.XLSX){doExcel();return;}
