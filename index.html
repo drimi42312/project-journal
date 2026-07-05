@@ -5,80 +5,127 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>יומן פרויקטים — לבנט</title>
 <style>
-:root{--purple:#7F77DD;--gray:#888780;--teal:#1D9E75;--amber:#EF9F27;--amber-dark:#854F0B;
---text:#2C2C2A;--muted:#8a8880;--border:#e3e1d9;--border2:#c9c7bd;--bg:#faf9f5;--card:#fff}
+:root{--purple:#7F77DD;--purple-bg:#efeefb;--gray:#888780;--gray-bg:#efeee9;--teal:#1D9E75;--teal-bg:#e4f4ee;
+--amber:#EF9F27;--amber-dark:#854F0B;--text:#2C2C2A;--muted:#8a8880;--border:#e3e1d9;--border2:#c9c7bd;
+--bg:#faf9f5;--card:#fff;--shadow:0 1px 3px rgba(0,0,0,.04)}
 *{box-sizing:border-box}
 body{font-family:"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg);margin:0;padding:0}
-header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-h1{font-size:19px;font-weight:600;margin:0}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+h1{font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;flex:1}
 .tab{border:1px solid var(--border2);background:var(--card);border-radius:20px;padding:5px 16px;font-size:14px;cursor:pointer;color:var(--text)}
+.tab:hover{border-color:var(--text)}
 .tab.active{background:var(--text);color:#fff;border-color:var(--text)}
-.btn{font-family:inherit;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer}
-.btn:hover{border-color:var(--text)}
-.btn-add{border-style:dashed;color:var(--muted);background:none;font-size:12px;padding:2px 10px;border-radius:8px;border:1px dashed var(--border2);cursor:pointer}
-.btn-add:hover{color:var(--text);border-color:var(--text)}
-main{max-width:900px;margin:0 auto;padding:24px}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:18px}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:5px}
-.tl{border-right:2px solid var(--border);padding-right:20px;margin-right:8px}
-.stage{position:relative;padding-bottom:6px}
-.sdot{position:absolute;right:-27px;top:6px;width:14px;height:14px;border-radius:50%;cursor:pointer}
-.sdot.big{width:18px;height:18px;right:-29px;top:4px}
-.srow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.snum{font-size:13px;color:var(--muted);min-width:22px}
-.stitle{flex:1;min-width:180px;font-family:inherit;font-size:15px;color:var(--text);border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent}
-.stitle:hover,.stitle:focus{border-color:var(--border);background:var(--card);outline:none}
-.stitle.big{font-weight:600}
-label.dt{font-size:12px;color:var(--muted);white-space:nowrap}
-input[type=date]{font-family:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);width:132px}
-.dur{font-size:12px;color:var(--muted);min-width:80px}
-.x{border:none;background:none;color:#c9c7bd;cursor:pointer;font-size:13px;padding:2px 4px}
-.x:hover{color:#A32D2D}
-.zone{padding:3px 0 10px;display:flex;gap:10px}
-.delay{position:relative;border:1px solid var(--amber);border-radius:10px;padding:9px 12px;margin:2px 0 10px;background:#fdf8ef}
-.ddot{position:absolute;right:-27px;top:12px;width:14px;height:14px;border-radius:50%;background:var(--amber)}
-.dcause{flex:1;min-width:200px;font-family:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)}
-.ddur{font-size:13px;color:var(--amber-dark);font-weight:600;min-width:90px}
-.dnote{font-size:12px;color:var(--muted);margin-top:4px}
-.summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:20px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:12px;font-size:14px}
-.summary b{font-weight:600}
-.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:15px}
-.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
-.pname{font-size:17px;font-weight:600;flex:1}
+.btn{font-family:inherit;font-size:13px;padding:7px 13px;border-radius:9px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--text);background:#fcfbf8}
+.btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn.primary:hover{background:#000}
+.btn-add{color:var(--muted);background:none;font-size:13px;padding:6px 14px;border-radius:9px;border:1px dashed var(--border2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-add:hover{color:var(--text);border-color:var(--text);background:#fcfbf8}
+main{max-width:920px;margin:0 auto;padding:24px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:20px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lchip{width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.tint-p{background:var(--purple-bg)} .tint-g{background:var(--gray-bg)} .tint-t{background:var(--teal-bg)}
+/* timeline */
+.tl{position:relative;padding-right:54px}
+.tl::before{content:"";position:absolute;right:20px;top:8px;bottom:34px;width:2px;background:var(--border)}
+.stage{position:relative;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:11px 14px;margin-bottom:11px;box-shadow:var(--shadow)}
+.stage.big{border-color:var(--teal);background:#fbfefc}
+.chip{position:absolute;right:-46px;top:11px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:3px solid var(--bg);user-select:none}
+.chip.p{background:var(--purple-bg)} .chip.g{background:var(--gray-bg)} .chip.t{background:var(--teal-bg)}
+.srow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.snum{font-size:12px;color:var(--muted);min-width:20px;font-weight:600}
+.stitle{flex:1;min-width:180px;font-family:inherit;font-size:15px;color:var(--text);border:1px solid transparent;border-radius:7px;padding:5px 7px;background:transparent}
+.stitle:hover{border-color:var(--border)} .stitle:focus{border-color:var(--border2);background:var(--bg);outline:none}
+.stitle.big{font-weight:700}
+.dates{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+label.dt{font-size:12px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+input[type=date]{font-family:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);width:140px}
+input[type=date]:focus{outline:none;border-color:var(--purple)}
+.dur{font-size:12px;color:var(--teal);font-weight:600;min-width:70px}
+.x{border:none;background:none;color:#c9c7bd;cursor:pointer;font-size:14px;padding:2px 5px;border-radius:6px}
+.x:hover{color:#A32D2D;background:#faeaea}
+.zone{padding:2px 0 12px;display:flex;gap:8px}
+.delay{position:relative;border:1px solid var(--amber);border-radius:11px;padding:10px 13px;margin:0 0 11px;background:#fdf8ef}
+.delay .chip{background:#fbe6c4}
+.dcause{flex:1;min-width:200px;font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid #f0d9ab;border-radius:7px;background:var(--card);color:var(--text)}
+.ddur{font-size:13px;color:var(--amber-dark);font-weight:700;min-width:80px}
+.dnote{font-size:12px;color:var(--amber-dark);margin-top:5px;opacity:.85}
+.addbar{display:flex;justify-content:center;margin-top:4px}
+.summary{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:22px;padding:15px 20px;background:var(--card);border:1px solid var(--border);border-radius:14px;font-size:14px;box-shadow:var(--shadow)}
+.summary .si{display:flex;align-items:center;gap:8px} .summary b{font-weight:700;font-size:15px}
+.empty{text-align:center;color:var(--muted);padding:44px 20px}
+.empty .big{font-size:40px;margin-bottom:6px}
+.empty p{font-size:15px;margin:6px 0 18px;line-height:1.6}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.pname{font-size:19px;font-weight:700;flex:1;display:flex;align-items:center;gap:8px}
+/* modal (stage picker) */
+.modalbg{position:fixed;inset:0;background:rgba(30,30,28,.4);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
+.modal{background:var(--card);border-radius:18px;padding:22px;max-width:460px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 12px 50px rgba(0,0,0,.2)}
+.modal h3{margin:0 0 14px;font-size:18px;display:flex;align-items:center;gap:8px}
+.pick-custom{display:flex;gap:8px}
+.pick-custom input{flex:1;font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--border2);border-radius:9px}
+.pick-custom input:focus{outline:none;border-color:var(--purple)}
+.pick-or{font-size:13px;color:var(--muted);text-align:center;margin:16px 0 10px;position:relative}
+.pick-list{overflow-y:auto;border:1px solid var(--border);border-radius:11px;padding:5px}
+.pick-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:14px}
+.pick-item:hover{background:var(--bg)}
+.pick-item.added{background:var(--teal-bg);color:var(--teal)}
+.pick-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.modal-foot{display:flex;gap:10px;margin-top:16px}
+.modal-foot .btn{flex:1;justify-content:center}
 /* sync + auth */
 .sync{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:5px}
 .sync .sd{width:8px;height:8px;border-radius:50%;background:var(--gray)}
 .sync.ok .sd{background:var(--teal)} .sync.saving .sd{background:var(--amber)} .sync.off .sd{background:#A32D2D}
 #userbar{display:none;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
-#auth{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
+#auth{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:70}
 .authcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:34px 30px;max-width:380px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.06)}
 .authcard h2{font-size:20px;margin:0 0 6px}
 .authcard p{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5}
 .authcard input{width:100%;font-family:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:12px;text-align:right}
-.authcard .btn{width:100%;padding:11px;font-size:15px;background:var(--text);color:#fff;border-color:var(--text)}
+.authcard .btn{width:100%;padding:11px;font-size:15px;background:var(--text);color:#fff;border-color:var(--text);justify-content:center}
 #loginMsg{font-size:13px;margin-top:14px;min-height:18px;color:var(--teal)}
 </style>
 </head>
 <body>
 <header>
-<h1>יומן פרויקטים</h1>
+<h1>🏗️ יומן פרויקטים</h1>
 <div class="tabs" id="tabs"></div>
 <span class="sync" id="sync"><span class="sd"></span><span id="syncTxt"></span></span>
-<button class="btn" id="newProj">+ פרויקט חדש</button>
-<button class="btn" id="excelBtn" title="ייצוא כל הפרויקטים לקובץ אקסל">ייצוא לאקסל</button>
-<button class="btn" id="exportBtn" title="גיבוי לקובץ JSON">גיבוי</button>
-<button class="btn" id="importBtn" title="שחזור מקובץ JSON">שחזור</button>
+<button class="btn primary" id="newProj">＋ פרויקט חדש</button>
+<button class="btn" id="excelBtn" title="ייצוא כל הפרויקטים לקובץ אקסל">📊 אקסל</button>
+<button class="btn" id="exportBtn" title="גיבוי לקובץ JSON">💾 גיבוי</button>
+<button class="btn" id="importBtn" title="שחזור מקובץ JSON">↩︎ שחזור</button>
 <input type="file" id="importFile" accept=".json" style="display:none">
-<span id="userbar"><span id="userEmail"></span><button class="btn" id="logoutBtn">יציאה</button></span>
+<span id="userbar"><span id="userEmail"></span><button class="btn" id="logoutBtn">🚪 יציאה</button></span>
 </header>
 <main>
 <div id="app"></div>
 </main>
 
+<!-- stage picker modal -->
+<div class="modalbg" id="picker">
+<div class="modal">
+<h3>➕ הוספת שלב</h3>
+<div class="pick-custom">
+<input id="customStage" placeholder="שם שלב מותאם אישית…">
+<button class="btn primary" id="addCustom">הוסף</button>
+</div>
+<div class="pick-or">— או בחר משלבי הרישוי המוכנים —</div>
+<div class="pick-list" id="pickList"></div>
+<div class="modal-foot">
+<button class="btn" id="addAll">הוסף את כל השלבים</button>
+<button class="btn" id="closePicker">סגור</button>
+</div>
+</div>
+</div>
+
+<!-- login -->
 <div id="auth">
 <div class="authcard">
-<h2>יומן פרויקטים — לבנט</h2>
+<h2>🏗️ יומן פרויקטים — לבנט</h2>
 <p>הנתונים מסונכרנים בין כל המכשירים. הזן את סיסמת הצוות פעם אחת במכשיר הזה.</p>
 <input type="password" id="loginEmail" placeholder="סיסמת הצוות" autocomplete="current-password">
 <button class="btn" id="loginBtn">כניסה</button>
@@ -93,23 +140,29 @@ const API_BASE="https://project-journal-sync-production.up.railway.app";
 /* ================================================================= */
 
 const DEFAULT_STAGES=[
-["תכנון ראשוני + הגשת תיק מידע","p"],
-["דיוק תכנון ראשוני בהתאם לדרישות תיק מידע ומדידות + גיוס יועצים","p"],
+["קבלת תכנון ראשוני","p"],
+["הגשת תיק מידע","t"],
+["הזמנת מדידות","p"],
+["דיוק תכנון ראשוני בהתאם לדרישות תיק מידע ומדידות","p"],
+["גיוס יועצים","p"],
 ["אישור יזם לתכנון","t"],
 ["התנעת יועצים — תיאום יועצים לשלב ההגשה","p"],
-["הגשה + קליטה","t"],
-["התחלת תיאום מכון בקרה — הטענת מסמכים","g"],
+["הגשה","t"],
+["קליטת הבקשה","t"],
 ["סגירת תחנות מכון רישוי","g"],
-["המשך תיאום יועצים לסגירת נספחים","p"],
+["תיאום יועצים למכון בקרה — עבודה על נספחי תכן","p"],
 ["החלטת ועדה","t"],
-["התחלת עבודה על טופס 2","p"],
 ["הטענת נספחים סופית למכון בקרה","g"],
-["אישור מכון בקרה תכן + התחלת עבודה על תוכניות 1:50 ורשימות","t"],
+["התחלת עבודה על טופס 2","p"],
+["אישור מכון בקרת תכן","t"],
+["התחלת עבודה על תוכניות 1:50 ורשימות","p"],
 ["אישור איכות סביבה","g"],
 ["בדיקה סופית","g"],
-["אגרות השבחה","g"]];
+["אגרות והשבחה","g"],
+["מתן היתר","t"]];
 const COLORS={p:"var(--purple)",g:"var(--gray)",t:"var(--teal)"};
 const CAT_NAMES={p:"תכנון ויועצים",g:"עירייה / מכון רישוי ובקרה",t:"אבן דרך"};
+const CAT_ICON={p:"✏️",g:"🏛️",t:"🚩"};
 const CAT_CYCLE={p:"g",g:"t",t:"p"};
 const KEY="project-journal-v1";
 let state={projects:[],cur:null};
@@ -204,14 +257,13 @@ rerenderSafe();
 function rerenderSafe(){if(editing){pendingRemote=true;}else render();}
 document.addEventListener("focusin",e=>{if(e.target.matches&&e.target.matches("input,textarea"))editing=true;});
 document.addEventListener("focusout",e=>{if(e.target.matches&&e.target.matches("input,textarea")){editing=false;if(pendingRemote){pendingRemote=false;render();}}});
-// retry any edits that failed while offline
 setInterval(()=>{if(sbReady&&dirty.size){[...dirty].forEach(pushProject);}},12000);
 
 /* ---------- auth (סיסמת צוות משותפת) ---------- */
 function onAuthed(){
 document.getElementById("auth").style.display="none";
 document.getElementById("userbar").style.display="flex";
-document.getElementById("userEmail").textContent="מחובר";
+document.getElementById("userEmail").textContent="👤 מחובר";
 if(!sbReady){sbReady=true;loadFromCloud();subscribeRealtime();}
 }
 function showLogin(){
@@ -227,7 +279,6 @@ if(!r.ok)throw new Error(r.status);
 TOKEN=token;localStorage.setItem("pj-token",token);
 onAuthed();return true;
 }catch(e){
-// שגיאת רשת — אם זו הסיסמה ששמורה כבר, נאפשר עבודה לא-מקוונת מהמטמון
 if(token&&token===localStorage.getItem("pj-token")){TOKEN=token;onAuthed();setStatus("offline");return true;}
 return false;
 }
@@ -277,77 +328,90 @@ renderTabs();
 const app=document.getElementById("app");
 const p=proj();
 if(!p){
-app.innerHTML='<div class="empty">אין עדיין פרויקטים.<br>לחץ על "+ פרויקט חדש" כדי להתחיל — כל פרויקט מקבל טיים ליין רישוי מלא.</div>';
+app.innerHTML='<div class="empty"><div class="big">🏗️</div><p>אין עדיין פרויקטים.<br>לחץ על "＋ פרויקט חדש" כדי להתחיל.</p></div>';
 return;
 }
 app.innerHTML="";
 const bar=document.createElement("div");
 bar.className="toolbar";
-bar.innerHTML=`<span class="pname">${esc(p.name)}</span>
-<button class="btn" id="renameProj">שינוי שם</button>
-<button class="btn" id="delProj">מחיקת פרויקט</button>`;
+bar.innerHTML=`<span class="pname">📁 ${esc(p.name)}</span>
+<button class="btn" id="renameProj">✏️ שינוי שם</button>
+<button class="btn" id="delProj">🗑️ מחיקה</button>`;
 app.appendChild(bar);
 bar.querySelector("#renameProj").onclick=()=>{const n=prompt("שם חדש לפרויקט:",p.name);if(n&&n.trim()){p.name=n.trim();save();render();}};
 bar.querySelector("#delProj").onclick=()=>{if(confirm('למחוק את הפרויקט "'+p.name+'"? פעולה זו אינה הפיכה.')){const id=p.id;state.projects=state.projects.filter(x=>x.id!==id);state.cur=state.projects.length?state.projects[0].id:null;removeProjectRemote(id);cacheLocal();render();}};
 
 const legend=document.createElement("div");
 legend.className="legend";
-legend.innerHTML=`<span><span class="dot" style="background:var(--purple)"></span>תכנון ויועצים</span>
-<span><span class="dot" style="background:var(--gray)"></span>עירייה / מכון רישוי ובקרה</span>
-<span><span class="dot" style="background:var(--teal)"></span>אבן דרך</span>
-<span><span class="dot" style="background:var(--amber)"></span>עיכוב</span>
-<span style="color:var(--muted)">לחיצה על עיגול של שלב מחליפה קטגוריה</span>`;
+legend.innerHTML=`<span><span class="lchip tint-p">✏️</span>תכנון ויועצים</span>
+<span><span class="lchip tint-g">🏛️</span>עירייה / מכון רישוי ובקרה</span>
+<span><span class="lchip tint-t">🚩</span>אבן דרך</span>
+<span><span class="lchip" style="background:#fbe6c4">⏳</span>עיכוב</span>
+<span style="color:var(--muted)">· לחיצה על האייקון מחליפה קטגוריה</span>`;
 app.appendChild(legend);
 
+if(!p.stages.length){
+const e=document.createElement("div");
+e.className="empty";
+e.innerHTML='<div class="big">📋</div><p>הפרויקט מתחיל ריק.<br>הוסף שלבים — מותאמים אישית או משלבי הרישוי המוכנים.</p><button class="btn primary" id="addFirst">➕ הוסף שלב</button>';
+app.appendChild(e);
+e.querySelector("#addFirst").onclick=()=>openPicker(null);
+}else{
 const tl=document.createElement("div");
 tl.className="tl";
 p.stages.forEach((st,i)=>{
 const big=st.c==="t";
+const hasEnd=!!st.e;
 const row=document.createElement("div");
-row.className="stage";
-row.innerHTML=`<span class="sdot${big?" big":""}" style="background:${COLORS[st.c]}" title="${CAT_NAMES[st.c]} — לחץ להחלפה" data-cyc="${i}"></span>
+row.className="stage"+(big?" big":"");
+row.innerHTML=`<span class="chip ${st.c}" title="${CAT_NAMES[st.c]} — לחץ להחלפה" data-cyc="${i}">${CAT_ICON[st.c]}</span>
 <div class="srow">
-<span class="snum">${i+1}.</span>
+<span class="snum">${i+1}</span>
 <input class="stitle${big?" big":""}" data-t="${i}" value="${esc(st.t)}">
-<label class="dt">התחלה <input type="date" data-ds="${i}" value="${st.s}"></label>
-<label class="dt">סיום <input type="date" data-de="${i}" value="${st.e}"></label>
-<span class="dur" id="dur${i}"></span>
-<button class="x" data-rmstage="${i}" title="מחק שלב">✕</button>
+<button class="x" data-rmstage="${i}" title="מחק שלב">🗑️</button>
+</div>
+<div class="dates">
+<label class="dt"><input type="date" data-ds="${i}" value="${st.s}"></label>
+${hasEnd?`<span style="color:var(--muted)">←</span><label class="dt">סיום <input type="date" data-de="${i}" value="${st.e}"></label><span class="dur" id="dur${i}"></span><button class="x" data-rmend="${i}" title="הסר תאריך סיום">✕</button>`
+:`<button class="btn-add" data-addend="${i}">＋ תאריך סיום</button>`}
 </div>`;
 tl.appendChild(row);
 
 if(st.d){
 const dv=document.createElement("div");
 dv.className="delay";
-dv.innerHTML=`<span class="ddot"></span>
+dv.innerHTML=`<span class="chip" title="עיכוב">⏳</span>
 <div class="srow">
-<span style="font-size:14px;color:var(--amber-dark);font-weight:600">עיכוב:</span>
+<span style="font-size:14px;color:var(--amber-dark);font-weight:700">עיכוב:</span>
 <input class="dcause" data-dc="${i}" value="${esc(st.d.cause)}" placeholder="הגורם המעכב — יזם, עירייה, יועץ, דיירים...">
-<label class="dt">מתאריך <input type="date" data-dds="${i}" value="${st.d.s}"></label>
-<label class="dt">עד תאריך <input type="date" data-dde="${i}" value="${st.d.e}"></label>
-<span class="ddur" id="ddur${i}"></span>
 <button class="x" data-rmdelay="${i}" title="הסר עיכוב">✕</button>
+</div>
+<div class="dates">
+<label class="dt">מתאריך <input type="date" data-dds="${i}" value="${st.d.s}"></label>
+<label class="dt">עד <input type="date" data-dde="${i}" value="${st.d.e}"></label>
+<span class="ddur" id="ddur${i}"></span>
 </div>
 <div class="dnote" id="dnote${i}"></div>`;
 tl.appendChild(dv);
 }
 const zone=document.createElement("div");
 zone.className="zone";
-zone.innerHTML=(st.d?"":`<button class="btn-add" data-adddelay="${i}">+ הוסף עיכוב</button>`)+
-`<button class="btn-add" data-addstage="${i}">+ הוסף שלב</button>`;
+zone.innerHTML=(st.d?"":`<button class="btn-add" data-adddelay="${i}">⏳ הוסף עיכוב</button>`)+
+`<button class="btn-add" data-addstage="${i}">➕ הוסף שלב</button>`;
 tl.appendChild(zone);
 });
 app.appendChild(tl);
 
 const sum=document.createElement("div");
 sum.className="summary";
-sum.innerHTML=`<div>עבודה נטו: <b id="net">—</b></div>
-<div>סך עיכובים: <b id="dly">—</b></div>
-<div>מקצה לקצה: <b id="gross">—</b></div>`;
+sum.innerHTML=`<div class="si">⏱️ עבודה נטו: <b id="net">—</b></div>
+<div class="si">⏳ סך עיכובים: <b id="dly">—</b></div>
+<div class="si">📆 מקצה לקצה: <b id="gross">—</b></div>`;
 app.appendChild(sum);
 
 wire(p);
 recalc(p);
+}
 }
 
 function wire(p){
@@ -358,16 +422,14 @@ app.querySelectorAll("input[data-de]").forEach(el=>el.addEventListener("input",e
 app.querySelectorAll("input[data-dc]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dc].d.cause=e.target.value;save();}));
 app.querySelectorAll("input[data-dds]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dds].d.s=e.target.value;save();recalc(p);}));
 app.querySelectorAll("input[data-dde]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dde].d.e=e.target.value;save();recalc(p);}));
-app.querySelectorAll("[data-cyc]").forEach(el=>el.addEventListener("click",e=>{const i=+e.target.dataset.cyc;p.stages[i].c=CAT_CYCLE[p.stages[i].c];save();render();}));
-app.querySelectorAll("[data-adddelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.target.dataset.adddelay].d={cause:"",s:"",e:""};save();render();}));
-app.querySelectorAll("[data-rmdelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.target.dataset.rmdelay].d=null;save();render();}));
-app.querySelectorAll("[data-addstage]").forEach(el=>el.addEventListener("click",e=>{
-const i=+e.target.dataset.addstage;
-const name=prompt("שם השלב החדש:");
-if(name&&name.trim()){p.stages.splice(i+1,0,newStage(name.trim(),"g"));save();render();}
-}));
+app.querySelectorAll("[data-cyc]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.cyc;p.stages[i].c=CAT_CYCLE[p.stages[i].c];save();render();}));
+app.querySelectorAll("[data-addend]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.addend;p.stages[i].e=p.stages[i].s||today();save();render();}));
+app.querySelectorAll("[data-rmend]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.rmend;p.stages[i].e="";save();render();}));
+app.querySelectorAll("[data-adddelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.currentTarget.dataset.adddelay].d={cause:"",s:"",e:""};save();render();}));
+app.querySelectorAll("[data-rmdelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.currentTarget.dataset.rmdelay].d=null;save();render();}));
+app.querySelectorAll("[data-addstage]").forEach(el=>el.addEventListener("click",e=>openPicker(+e.currentTarget.dataset.addstage)));
 app.querySelectorAll("[data-rmstage]").forEach(el=>el.addEventListener("click",e=>{
-const i=+e.target.dataset.rmstage;
+const i=+e.currentTarget.dataset.rmstage;
 if(confirm('למחוק את השלב "'+p.stages[i].t+'"?')){p.stages.splice(i,1);save();render();}
 }));
 }
@@ -376,7 +438,7 @@ function recalc(p){
 let net=0,dl=0;
 p.stages.forEach((st,i)=>{
 const el=document.getElementById("dur"+i);
-if(st.s&&st.e&&days(st.s,st.e)>=0){net+=days(st.s,st.e);el.textContent=wk(days(st.s,st.e));}
+if(st.s&&st.e&&days(st.s,st.e)>=0){net+=days(st.s,st.e);if(el)el.textContent=wk(days(st.s,st.e));}
 else if(el)el.textContent="";
 if(st.d){
 const de=document.getElementById("ddur"+i),note=document.getElementById("dnote"+i);
@@ -390,22 +452,49 @@ else{de.textContent="";note.textContent="";}
 });
 document.getElementById("net").textContent=net?wk(net):"—";
 document.getElementById("dly").textContent=dl?wk(dl):"—";
-const withDates=p.stages.filter(s=>s.s||s.e);
-if(withDates.length){
-const starts=p.stages.map(s=>s.s).filter(Boolean).sort();
-const ends=p.stages.map(s=>s.e).filter(Boolean).sort();
-if(starts.length&&ends.length){
-document.getElementById("gross").textContent=(days(starts[0],ends[ends.length-1])/30.4).toFixed(1)+" חודשים";
-return;
+const all=[];
+p.stages.forEach(s=>{if(s.s)all.push(s.s);if(s.e)all.push(s.e);});
+if(all.length>=2){all.sort();document.getElementById("gross").textContent=(days(all[0],all[all.length-1])/30.4).toFixed(1)+" חודשים";}
+else document.getElementById("gross").textContent="—";
 }
+
+/* ---------- stage picker ---------- */
+let pickerIndex=null;
+function openPicker(index){
+pickerIndex=index;
+const list=document.getElementById("pickList");
+list.innerHTML="";
+DEFAULT_STAGES.forEach((s,i)=>{
+const it=document.createElement("div");
+it.className="pick-item";
+it.innerHTML=`<span class="pick-ico tint-${s[1]}">${CAT_ICON[s[1]]}</span><span>${esc(s[0])}</span>`;
+it.onclick=()=>{addStage(newStage(s[0],s[1]));it.className="pick-item added";it.querySelector("span:last-child").textContent="✓ "+s[0];};
+list.appendChild(it);
+});
+document.getElementById("customStage").value="";
+document.getElementById("picker").style.display="flex";
+setTimeout(()=>document.getElementById("customStage").focus(),50);
 }
-document.getElementById("gross").textContent="—";
+function closePicker(){document.getElementById("picker").style.display="none";}
+function addStage(stage){
+const p=proj();if(!p)return;
+if(pickerIndex==null||pickerIndex<0)p.stages.push(stage);
+else{p.stages.splice(pickerIndex+1,0,stage);pickerIndex++;}
+save();render();
 }
+document.getElementById("addCustom").onclick=()=>{
+const inp=document.getElementById("customStage");const v=inp.value.trim();
+if(v){addStage(newStage(v,"p"));inp.value="";inp.focus();}
+};
+document.getElementById("customStage").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("addCustom").click();});
+document.getElementById("addAll").onclick=()=>{DEFAULT_STAGES.forEach(s=>addStage(newStage(s[0],s[1])));closePicker();};
+document.getElementById("closePicker").onclick=closePicker;
+document.getElementById("picker").addEventListener("click",e=>{if(e.target.id==="picker")closePicker();});
 
 document.getElementById("newProj").onclick=()=>{
 const name=prompt("שם הפרויקט (למשל: ישראל מריזין 5):");
 if(!name||!name.trim())return;
-const p={id:uid(),name:name.trim(),stages:DEFAULT_STAGES.map(s=>newStage(s[0],s[1]))};
+const p={id:uid(),name:name.trim(),stages:[]};
 state.projects.push(p);state.cur=p.id;save();render();
 };
 document.getElementById("excelBtn").onclick=()=>{
@@ -421,7 +510,7 @@ if(!state.projects.length){alert("אין פרויקטים לייצוא");return;
 const wb=XLSX.utils.book_new();
 wb.Workbook={Views:[{RTL:true}]};
 state.projects.forEach(p=>{
-const rows=[["#","שלב","קטגוריה","תאריך התחלה","תאריך סיום","משך (שבועות)","גורם מעכב","עיכוב מתאריך","עיכוב עד","משך עיכוב (שבועות)"]];
+const rows=[["#","שלב","קטגוריה","תאריך","תאריך סיום","משך (שבועות)","גורם מעכב","עיכוב מתאריך","עיכוב עד","משך עיכוב (שבועות)"]];
 let net=0,dl=0;
 p.stages.forEach((st,i)=>{
 const durD=(st.s&&st.e&&days(st.s,st.e)>=0)?days(st.s,st.e):null;
