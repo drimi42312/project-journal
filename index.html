@@ -10,19 +10,33 @@
 --bg:#faf9f5;--card:#fff;--shadow:0 1px 3px rgba(0,0,0,.04)}
 *{box-sizing:border-box}
 body{font-family:"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg);margin:0;padding:0}
-header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
-h1{font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;flex:1}
-.tab{border:1px solid var(--border2);background:var(--card);border-radius:20px;padding:5px 16px;font-size:14px;cursor:pointer;color:var(--text)}
-.tab:hover{border-color:var(--text)}
-.tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40}
+h1{font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.hspace{flex:1}
+.menu{position:relative}
+.dropdown{position:absolute;top:calc(100% + 8px);left:0;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 34px rgba(0,0,0,.13);padding:6px;min-width:216px;display:none;z-index:50}
+.dropdown.open{display:block}
+.dropdown button,.dropdown .who{display:flex;align-items:center;gap:10px;width:100%;text-align:right;background:none;border:none;font-family:inherit;font-size:14px;color:var(--text);padding:9px 11px;border-radius:8px;cursor:pointer}
+.dropdown button:hover{background:var(--bg)}
+.dropdown .who{color:var(--muted);font-size:13px;cursor:default}
+.dropdown .sep{height:1px;background:var(--border);margin:5px 4px}
+.layout{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto}
+.sidebar{width:238px;flex:none;padding:16px 12px;position:sticky;top:55px;align-self:flex-start;max-height:calc(100vh - 55px);overflow-y:auto;border-left:1px solid var(--border)}
+.side-h{font-size:11px;color:var(--muted);font-weight:700;margin:16px 8px 7px;letter-spacing:.03em}
+.pitem{display:block;width:100%;text-align:right;background:none;border:1px solid transparent;border-radius:10px;padding:9px 12px;font-size:14px;color:var(--text);cursor:pointer;margin-bottom:3px;line-height:1.35}
+.pitem:hover{background:var(--card);border-color:var(--border)}
+.pitem.active{background:var(--text);color:#fff;border-color:var(--text)}
+.pitem.tgt{color:var(--purple);font-weight:600}
+.pitem.tgt.active{background:var(--purple);color:#fff;border-color:var(--purple)}
+.content{flex:1;min-width:0;max-width:none;padding:22px 26px}
+@media(max-width:720px){.layout{flex-direction:column}.sidebar{width:100%;position:static;max-height:none;border-left:none;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px}.side-h{width:100%}.pitem{width:auto}.content{padding:18px}}
 .btn{font-family:inherit;font-size:13px;padding:7px 13px;border-radius:9px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--text);background:#fcfbf8}
 .btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
 .btn.primary:hover{background:#000}
 .btn-add{color:var(--muted);background:none;font-size:13px;padding:6px 14px;border-radius:9px;border:1px dashed var(--border2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .btn-add:hover{color:var(--text);border-color:var(--text);background:#fcfbf8}
-main{max-width:920px;margin:0 auto;padding:24px}
+/* layout handled by .layout / .content */
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:20px;align-items:center}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .lchip{width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
@@ -132,18 +146,26 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 <body>
 <header>
 <h1>🏗️ יומן פרויקטים</h1>
-<div class="tabs" id="tabs"></div>
+<div class="hspace"></div>
 <span class="sync" id="sync"><span class="sd"></span><span id="syncTxt"></span></span>
+<div class="menu">
+<button class="btn" id="settingsBtn">⚙️ הגדרות</button>
+<div class="dropdown" id="settingsMenu">
+<button id="excelBtn">📊 ייצוא לאקסל</button>
+<button id="exportBtn">💾 גיבוי לקובץ</button>
+<button id="importBtn">↩︎ שחזור מגיבוי</button>
+<div class="sep"></div>
+<span class="who" id="userEmail">👤 מחובר</span>
+<button id="logoutBtn">🚪 יציאה</button>
+</div>
+</div>
 <button class="btn primary" id="newProj">＋ פרויקט חדש</button>
-<button class="btn" id="excelBtn" title="ייצוא כל הפרויקטים לקובץ אקסל">📊 אקסל</button>
-<button class="btn" id="exportBtn" title="גיבוי לקובץ JSON">💾 גיבוי</button>
-<button class="btn" id="importBtn" title="שחזור מקובץ JSON">↩︎ שחזור</button>
 <input type="file" id="importFile" accept=".json" style="display:none">
-<span id="userbar"><span id="userEmail"></span><button class="btn" id="logoutBtn">🚪 יציאה</button></span>
 </header>
-<main>
-<div id="app"></div>
-</main>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content"><div id="app"></div></main>
+</div>
 
 <!-- stage picker modal -->
 <div class="modalbg" id="picker">
@@ -348,15 +370,20 @@ setInterval(()=>{if(sbReady&&dirty.size){[...dirty].forEach(id=>id===TARGETS_ID?
 /* ---------- auth (סיסמת צוות משותפת) ---------- */
 function onAuthed(){
 document.getElementById("auth").style.display="none";
-document.getElementById("userbar").style.display="flex";
 document.getElementById("userEmail").textContent="👤 מחובר";
 if(!sbReady){sbReady=true;loadFromCloud();subscribeRealtime();}
 }
 function showLogin(){
 sbReady=false;
-document.getElementById("userbar").style.display="none";
 document.getElementById("auth").style.display="flex";
 }
+/* settings dropdown */
+(function(){
+const btn=document.getElementById("settingsBtn"),menu=document.getElementById("settingsMenu");
+btn.onclick=e=>{e.stopPropagation();menu.classList.toggle("open");};
+document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==btn)menu.classList.remove("open");});
+["excelBtn","exportBtn","importBtn","logoutBtn"].forEach(id=>document.getElementById(id).addEventListener("click",()=>menu.classList.remove("open")));
+})();
 async function tryLogin(token){
 try{
 const r=await fetch(API_BASE+"/state",{headers:{Authorization:"Bearer "+token}});
@@ -413,25 +440,34 @@ return quarterOfDate(st.e||st.s);
 }
 
 function setView(v){view=v;localStorage.setItem("pj-view",v);}
-function renderTabs(){
-const el=document.getElementById("tabs");
+function renderSidebar(){
+const el=document.getElementById("sidebar");
 el.innerHTML="";
+const tg=document.createElement("button");
+tg.className="pitem tgt"+(view==="targets"?" active":"");
+tg.textContent="🎯 יעדי תכנון";
+tg.onclick=()=>{setView("targets");render();};
+el.appendChild(tg);
+const h=document.createElement("div");
+h.className="side-h";h.textContent="פרויקטים";
+el.appendChild(h);
 state.projects.forEach(p=>{
 const b=document.createElement("button");
-b.className="tab"+(view==="projects"&&p.id===state.cur?" active":"");
+b.className="pitem"+(view==="projects"&&p.id===state.cur?" active":"");
 b.textContent=p.name;
 b.onclick=()=>{state.cur=p.id;setView("projects");cacheLocal();render();};
 el.appendChild(b);
 });
-const tg=document.createElement("button");
-tg.className="tab tgttab"+(view==="targets"?" active":"");
-tg.textContent="🎯 יעדי תכנון";
-tg.onclick=()=>{setView("targets");render();};
-el.appendChild(tg);
+if(!state.projects.length){
+const e=document.createElement("div");
+e.style.cssText="color:var(--muted);font-size:13px;padding:8px 6px";
+e.textContent="אין עדיין פרויקטים";
+el.appendChild(e);
+}
 }
 
 function render(){
-renderTabs();
+renderSidebar();
 const app=document.getElementById("app");
 if(view==="targets"){renderTargets(app);return;}
 const p=proj();
