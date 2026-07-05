@@ -76,8 +76,9 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 .modal-foot{display:flex;gap:10px;margin-top:16px}
 .modal-foot .btn{flex:1;justify-content:center}
 .tmodal label{display:block;font-size:13px;color:var(--muted);margin:13px 0 5px}
-.tmodal select{width:100%;font-family:inherit;font-size:14px;padding:10px 11px;border:1px solid var(--border2);border-radius:9px;background:var(--card);color:var(--text)}
-.tmodal select:focus{outline:none;border-color:var(--purple)}
+.tmodal select,.tmodal input{width:100%;font-family:inherit;font-size:14px;padding:10px 11px;border:1px solid var(--border2);border-radius:9px;background:var(--card);color:var(--text)}
+.tmodal input{margin-top:8px}
+.tmodal select:focus,.tmodal input:focus{outline:none;border-color:var(--purple)}
 /* planning targets board */
 .tgt-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 .tgt-title{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -167,8 +168,9 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 <h3>🎯 הוספת יעד</h3>
 <label>פרויקט</label>
 <select id="tProject"></select>
-<label>שלב</label>
+<label>שלב תכנוני</label>
 <select id="tStage"></select>
+<input id="tCustomStage" placeholder="שם השלב…" style="display:none">
 <label>רבעון יעד</label>
 <select id="tQuarter"></select>
 <div class="modal-foot">
@@ -662,9 +664,18 @@ t.q=qKey(Math.floor(ni/4),ni%4+1);saveTargets();render();
 }
 function fillStageSelect(){
 const p=state.projects.find(x=>x.id===document.getElementById("tProject").value);
-const ss=document.getElementById("tStage");
-if(!p||!p.stages.length){ss.innerHTML='<option value="">— אין שלבים בפרויקט זה —</option>';return;}
-ss.innerHTML=p.stages.map((s,i)=>`<option value="${i}">${esc(s.t)}</option>`).join("");
+const defTitles=DEFAULT_STAGES.map(s=>s[0]);
+let html='<optgroup label="שלבי רישוי מוכנים">'+DEFAULT_STAGES.map(s=>`<option value="${esc(s[0])}">${esc(s[0])}</option>`).join("")+'</optgroup>';
+if(p&&p.stages.length){
+const extra=p.stages.filter(s=>s.t&&!defTitles.includes(s.t));
+if(extra.length)html+='<optgroup label="שלבים בפרויקט">'+extra.map(s=>`<option value="${esc(s.t)}">${esc(s.t)}</option>`).join("")+'</optgroup>';
+}
+html+='<option value="__custom__">➕ שלב אחר (טקסט חופשי)…</option>';
+document.getElementById("tStage").innerHTML=html;
+toggleCustomStage();
+}
+function toggleCustomStage(){
+document.getElementById("tCustomStage").style.display=document.getElementById("tStage").value==="__custom__"?"block":"none";
 }
 function openTargetModal(presetQ){
 const ps=document.getElementById("tProject");
@@ -672,18 +683,23 @@ ps.innerHTML=state.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</opti
 fillStageSelect();
 let opts="";YEARS.forEach(y=>{for(let q=1;q<=4;q++){const k=qKey(y,q);opts+=`<option value="${k}"${k===presetQ?" selected":""}>${y} · רבעון ${q}</option>`;}});
 document.getElementById("tQuarter").innerHTML=opts;
+document.getElementById("tCustomStage").value="";
 document.getElementById("tmodal").style.display="flex";
 }
 document.getElementById("tProject").onchange=fillStageSelect;
+document.getElementById("tStage").onchange=toggleCustomStage;
 document.getElementById("tClose").onclick=()=>document.getElementById("tmodal").style.display="none";
 document.getElementById("tmodal").addEventListener("click",e=>{if(e.target.id==="tmodal")document.getElementById("tmodal").style.display="none";});
 document.getElementById("tAdd").onclick=()=>{
 const pid=document.getElementById("tProject").value;
-const si=document.getElementById("tStage").value;
+const sel=document.getElementById("tStage").value;
 const q=document.getElementById("tQuarter").value;
 const p=state.projects.find(x=>x.id===pid);
-if(!p||si===""){alert("בחר פרויקט ושלב (ודא שיש שלבים בפרויקט)");return;}
-state.targets.push({id:uid(),pid:pid,st:p.stages[+si].t,si:+si,q:q});
+if(!p){alert("בחר פרויקט");return;}
+let title=sel==="__custom__"?document.getElementById("tCustomStage").value.trim():sel;
+if(!title){alert("בחר או הקלד שלב");return;}
+const si=p.stages.findIndex(s=>s.t===title);
+state.targets.push({id:uid(),pid:pid,st:title,si:si,q:q});
 saveTargets();
 document.getElementById("tmodal").style.display="none";
 render();
