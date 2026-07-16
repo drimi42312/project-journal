@@ -46,6 +46,11 @@ h1{font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:7
 .tl::before{content:"";position:absolute;right:20px;top:8px;bottom:34px;width:2px;background:var(--border)}
 .stage{position:relative;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:11px 14px;margin-bottom:11px;box-shadow:var(--shadow)}
 .stage.big{border-color:var(--teal);background:#fbfefc}
+.stage,.delay{padding-left:30px}
+.drag{position:absolute;left:8px;top:11px;color:var(--border2);cursor:grab;font-size:15px;user-select:none;line-height:1}
+.drag:hover{color:var(--muted)} .drag:active{cursor:grabbing}
+.dragging{opacity:.45}
+.drop-before{box-shadow:0 -3px 0 0 var(--purple)}
 .chip{position:absolute;right:-46px;top:11px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:3px solid var(--bg);user-select:none}
 .chip.p{background:var(--purple-bg)} .chip.g{background:var(--gray-bg)} .chip.t{background:var(--teal-bg)}
 .srow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
@@ -251,6 +256,7 @@ const YEARS=[NOW_Y,NOW_Y+1,NOW_Y+2];
 let state={projects:[],cur:null,targets:[]};
 try{const s=localStorage.getItem(KEY);if(s)state=JSON.parse(s);}catch(e){}
 if(!Array.isArray(state.targets))state.targets=[];
+(state.projects||[]).forEach(normProject);normTargets();
 let view=localStorage.getItem("pj-view")||"projects";
 let layers={target:true,actual:true};
 
@@ -285,7 +291,7 @@ if(!p||!TOKEN)return;
 const pos=state.projects.findIndex(x=>x.id===id);
 try{
 const r=await fetch(API_BASE+"/project",{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),
-body:JSON.stringify({id:p.id,name:p.name,stages:p.stages,pos:pos<0?0:pos,updated_by:CLIENT_ID})});
+body:JSON.stringify({id:p.id,name:p.name,items:p.items,pos:pos<0?0:pos,updated_by:CLIENT_ID})});
 if(!r.ok)throw new Error(r.status);
 dirty.delete(id);setStatus("synced");
 }catch(e){dirty.add(id);setStatus("offline");}
@@ -322,7 +328,7 @@ const d=await r.json();
 const rows=d.projects||[];
 const tRow=rows.find(x=>x.id===TARGETS_ID);
 if(tRow&&Array.isArray(tRow.stages))state.targets=tRow.stages;
-const cloud=rows.filter(x=>x.id!==TARGETS_ID).map(x=>({id:x.id,name:x.name,stages:x.stages||[],pos:x.pos}));
+const cloud=rows.filter(x=>x.id!==TARGETS_ID).map(x=>normProject({id:x.id,name:x.name,items:x.items,stages:x.stages,pos:x.pos}));
 const migrated=localStorage.getItem("pj-migrated");
 if(cloud.length===0&&state.projects.length>0&&!migrated){
 // כניסה ראשונה: העלאת פרויקטים שהיו שמורים מקומית אל הענן (מיגרציה חד-פעמית)
@@ -332,6 +338,7 @@ state.projects=cloud;
 if(state.cur&&!state.projects.find(p=>p.id===state.cur))state.cur=null;
 if(!state.cur&&state.projects.length)state.cur=state.projects[0].id;
 }
+normTargets();
 localStorage.setItem("pj-migrated","1");
 cacheLocal();setStatus("synced");
 }catch(e){setStatus("offline");}
@@ -347,8 +354,8 @@ function handleRemote(msg){
 if(msg.type==="upsert"){
 const n=msg.project;
 if(!n||n.updated_by===CLIENT_ID)return; // ignore our own echo
-if(n.id===TARGETS_ID){state.targets=Array.isArray(n.stages)?n.stages:[];cacheLocal();rerenderSafe();return;}
-const inc={id:n.id,name:n.name,stages:n.stages||[],pos:n.pos};
+if(n.id===TARGETS_ID){state.targets=Array.isArray(n.stages)?n.stages:[];normTargets();cacheLocal();rerenderSafe();return;}
+const inc=normProject({id:n.id,name:n.name,items:n.items,stages:n.stages,pos:n.pos});
 const i=state.projects.findIndex(p=>p.id===inc.id);
 if(i<0)state.projects.push(inc);else state.projects[i]=inc;
 state.projects.sort((a,b)=>(a.pos||0)-(b.pos||0));
@@ -413,7 +420,35 @@ document.getElementById("logoutBtn").onclick=()=>{TOKEN="";localStorage.removeIt
 
 /* ---------- app logic ---------- */
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function newStage(title,cat){return {t:title,c:cat||"g",s:"",e:"",d:null}}
+function newStageItem(title,cat){return {type:"stage",id:uid(),t:title||"",c:cat||"g",s:"",e:""}}
+function newDelayItem(){return {type:"delay",id:uid(),cause:"",s:"",e:""}}
+function catForTitle(title){const d=DEFAULT_STAGES.find(s=>s[0]===title);return d?d[1]:"p"}
+function fromStages(stages){
+const items=[];
+(stages||[]).forEach(s=>{
+items.push({type:"stage",id:s.id||uid(),t:s.t||"",c:s.c||"g",s:s.s||"",e:s.e||""});
+if(s.d)items.push({type:"delay",id:uid(),cause:s.d.cause||"",s:s.d.s||"",e:s.d.e||""});
+});
+return items;
+}
+function normProject(p){
+if(!p)return p;
+if(!Array.isArray(p.items))p.items=fromStages(p.stages);
+p.items.forEach(it=>{if(!it.id)it.id=uid();if(it.type!=="delay"&&it.type!=="stage")it.type="stage";});
+delete p.stages;
+return p;
+}
+function stageById(p,id){return p&&p.items?p.items.find(it=>it.type==="stage"&&it.id===id):null}
+function normTargets(){
+state.targets.forEach(t=>{
+if(!t.sid&&(t.st||t.title)){
+const p=state.projects.find(x=>x.id===t.pid);
+const st=p?p.items.find(it=>it.type==="stage"&&it.t===(t.st||t.title)):null;
+if(st)t.sid=st.id;
+if(!t.title)t.title=t.st||"";
+}
+});
+}
 function proj(){return state.projects.find(p=>p.id===state.cur)}
 function days(a,b){return (new Date(b)-new Date(a))/864e5}
 function wk(d){
@@ -427,17 +462,9 @@ function qidx(y,q){return y*4+(q-1)}
 function qKey(y,q){return y+"-Q"+q}
 function parseQ(k){const m=/^(\d+)-Q(\d)$/.exec(k||"");if(!m)return null;const y=+m[1],q=+m[2];return {y,q,idx:qidx(y,q)}}
 function quarterOfDate(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return null;const y=d.getFullYear(),q=Math.floor(d.getMonth()/3)+1;return {y,q,idx:qidx(y,q)}}
-function resolveStage(p,t){
-if(!p)return null;
-if(typeof t.si==="number"&&p.stages[t.si]&&p.stages[t.si].t===t.st)return p.stages[t.si];
-return p.stages.find(s=>s.t===t.st)||null;
-}
-function actualQuarter(t){
-const p=state.projects.find(x=>x.id===t.pid);
-const st=resolveStage(p,t);
-if(!st)return null;
-return quarterOfDate(st.e||st.s);
-}
+function targetStage(t){const p=state.projects.find(x=>x.id===t.pid);return p?stageById(p,t.sid):null}
+function targetTitle(t){const st=targetStage(t);return st?st.t:(t.title||t.st||"—")}
+function actualQuarter(t){const st=targetStage(t);if(!st)return null;return quarterOfDate(st.e||st.s)}
 
 function setView(v){view=v;localStorage.setItem("pj-view",v);}
 function renderSidebar(){
@@ -494,7 +521,7 @@ legend.innerHTML=`<span><span class="lchip tint-p">✏️</span>תכנון וי�
 <span style="color:var(--muted)">· לחיצה על האייקון מחליפה קטגוריה</span>`;
 app.appendChild(legend);
 
-if(!p.stages.length){
+if(!p.items.length){
 const e=document.createElement("div");
 e.className="empty";
 e.innerHTML='<div class="big">📋</div><p>הפרויקט מתחיל ריק.<br>הוסף שלבים — מותאמים אישית או משלבי הרישוי המוכנים.</p><button class="btn primary" id="addFirst">➕ הוסף שלב</button>';
@@ -503,48 +530,14 @@ e.querySelector("#addFirst").onclick=()=>openPicker(null);
 }else{
 const tl=document.createElement("div");
 tl.className="tl";
-p.stages.forEach((st,i)=>{
-const big=st.c==="t";
-const hasEnd=!!st.e;
-const row=document.createElement("div");
-row.className="stage"+(big?" big":"");
-row.innerHTML=`<span class="chip ${st.c}" title="${CAT_NAMES[st.c]} — לחץ להחלפה" data-cyc="${i}">${CAT_ICON[st.c]}</span>
-<div class="srow">
-<span class="snum">${i+1}</span>
-<input class="stitle${big?" big":""}" data-t="${i}" value="${esc(st.t)}">
-<button class="x" data-rmstage="${i}" title="מחק שלב">🗑️</button>
-</div>
-<div class="dates">
-<label class="dt"><input type="date" data-ds="${i}" value="${st.s}"></label>
-${hasEnd?`<span style="color:var(--muted)">←</span><label class="dt">סיום <input type="date" data-de="${i}" value="${st.e}"></label><span class="dur" id="dur${i}"></span><button class="x" data-rmend="${i}" title="הסר תאריך סיום">✕</button>`
-:`<button class="btn-add" data-addend="${i}">＋ תאריך סיום</button>`}
-</div>`;
-tl.appendChild(row);
-
-if(st.d){
-const dv=document.createElement("div");
-dv.className="delay";
-dv.innerHTML=`<span class="chip" title="עיכוב">⏳</span>
-<div class="srow">
-<span style="font-size:14px;color:var(--amber-dark);font-weight:700">עיכוב:</span>
-<input class="dcause" data-dc="${i}" value="${esc(st.d.cause)}" placeholder="הגורם המעכב — יזם, עירייה, יועץ, דיירים...">
-<button class="x" data-rmdelay="${i}" title="הסר עיכוב">✕</button>
-</div>
-<div class="dates">
-<label class="dt">מתאריך <input type="date" data-dds="${i}" value="${st.d.s}"></label>
-<label class="dt">עד <input type="date" data-dde="${i}" value="${st.d.e}"></label>
-<span class="ddur" id="ddur${i}"></span>
-</div>
-<div class="dnote" id="dnote${i}"></div>`;
-tl.appendChild(dv);
-}
-const zone=document.createElement("div");
-zone.className="zone";
-zone.innerHTML=(st.d?"":`<button class="btn-add" data-adddelay="${i}">⏳ הוסף עיכוב</button>`)+
-`<button class="btn-add" data-addstage="${i}">➕ הוסף שלב</button>`;
-tl.appendChild(zone);
+let no=0;
+p.items.forEach(it=>{
+if(it.type==="stage"){no++;tl.appendChild(buildStage(p,it,no));}
+else tl.appendChild(buildDelay(p,it));
+tl.appendChild(buildZone(p,it));
 });
 app.appendChild(tl);
+attachDnD(p,tl);
 
 const sum=document.createElement("div");
 sum.className="summary";
@@ -552,54 +545,123 @@ sum.innerHTML=`<div class="si">⏱️ עבודה נטו: <b id="net">—</b></di
 <div class="si">⏳ סך עיכובים: <b id="dly">—</b></div>
 <div class="si">📆 מקצה לקצה: <b id="gross">—</b></div>`;
 app.appendChild(sum);
-
-wire(p);
 recalc(p);
 }
 }
 
-function wire(p){
-const app=document.getElementById("app");
-app.querySelectorAll("input[data-t]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.t].t=e.target.value;save();}));
-app.querySelectorAll("input[data-ds]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.ds].s=e.target.value;save();recalc(p);}));
-app.querySelectorAll("input[data-de]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.de].e=e.target.value;save();recalc(p);}));
-app.querySelectorAll("input[data-dc]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dc].d.cause=e.target.value;save();}));
-app.querySelectorAll("input[data-dds]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dds].d.s=e.target.value;save();recalc(p);}));
-app.querySelectorAll("input[data-dde]").forEach(el=>el.addEventListener("input",e=>{p.stages[+e.target.dataset.dde].d.e=e.target.value;save();recalc(p);}));
-app.querySelectorAll("[data-cyc]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.cyc;p.stages[i].c=CAT_CYCLE[p.stages[i].c];save();render();}));
-app.querySelectorAll("[data-addend]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.addend;p.stages[i].e=p.stages[i].s||today();save();render();}));
-app.querySelectorAll("[data-rmend]").forEach(el=>el.addEventListener("click",e=>{const i=+e.currentTarget.dataset.rmend;p.stages[i].e="";save();render();}));
-app.querySelectorAll("[data-adddelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.currentTarget.dataset.adddelay].d={cause:"",s:"",e:""};save();render();}));
-app.querySelectorAll("[data-rmdelay]").forEach(el=>el.addEventListener("click",e=>{p.stages[+e.currentTarget.dataset.rmdelay].d=null;save();render();}));
-app.querySelectorAll("[data-addstage]").forEach(el=>el.addEventListener("click",e=>openPicker(+e.currentTarget.dataset.addstage)));
-app.querySelectorAll("[data-rmstage]").forEach(el=>el.addEventListener("click",e=>{
-const i=+e.currentTarget.dataset.rmstage;
-if(confirm('למחוק את השלב "'+p.stages[i].t+'"?')){p.stages.splice(i,1);save();render();}
-}));
+/* ---- timeline item builders + drag & drop ---- */
+let dragItem=null,dragProj=null;
+function buildStage(p,it,no){
+const big=it.c==="t",hasEnd=!!it.e;
+const el=document.createElement("div");
+el.className="stage"+(big?" big":"");
+el.dataset.id=it.id;
+el.innerHTML=`<span class="drag" title="גרור לסידור מחדש">⠿</span>
+<span class="chip ${it.c}" title="${CAT_NAMES[it.c]} — לחץ להחלפה">${CAT_ICON[it.c]}</span>
+<div class="srow">
+<span class="snum">${no}</span>
+<input class="stitle${big?" big":""}" value="${esc(it.t)}">
+<button class="x xdel" title="מחק שלב">🗑️</button>
+</div>
+<div class="dates">
+<label class="dt"><input type="date" class="ds" value="${it.s}"></label>
+${hasEnd?`<span style="color:var(--muted)">←</span><label class="dt">סיום <input type="date" class="de" value="${it.e}"></label><span class="dur"></span><button class="x xrmend" title="הסר תאריך סיום">✕</button>`:`<button class="btn-add addend">＋ תאריך סיום</button>`}
+</div>`;
+el.querySelector(".chip").onclick=()=>{it.c=CAT_CYCLE[it.c];save();render();};
+el.querySelector(".stitle").addEventListener("input",e=>{it.t=e.target.value;save();});
+el.querySelector(".xdel").onclick=()=>{if(confirm('למחוק את השלב "'+(it.t||"")+'"?')){p.items.splice(p.items.indexOf(it),1);save();render();}};
+el.querySelector(".ds").addEventListener("input",e=>{it.s=e.target.value;save();recalc(p);});
+const de=el.querySelector(".de");if(de)de.addEventListener("input",e=>{it.e=e.target.value;save();recalc(p);});
+const ae=el.querySelector(".addend");if(ae)ae.onclick=()=>{it.e=it.s||today();save();render();};
+const re=el.querySelector(".xrmend");if(re)re.onclick=()=>{it.e="";save();render();};
+setupDrag(el,it,p);
+return el;
+}
+function buildDelay(p,it){
+const started=!!it.s,ended=!!it.e;
+const el=document.createElement("div");
+el.className="delay";el.dataset.id=it.id;
+el.innerHTML=`<span class="drag" title="גרור לסידור מחדש">⠿</span>
+<span class="chip" title="עיכוב">⏳</span>
+<div class="srow">
+<span style="font-size:14px;color:var(--amber-dark);font-weight:700">עיכוב:</span>
+<input class="dcause" value="${esc(it.cause)}" placeholder="הגורם המעכב — יזם, עירייה, יועץ, דיירים...">
+<button class="x xdel" title="הסר עיכוב">✕</button>
+</div>
+<div class="dates">
+${!started?`<button class="btn-add startdelay">▶️ התחלת עיכוב</button>`:`<label class="dt">מתאריך <input type="date" class="dds" value="${it.s}"></label><label class="dt">עד <input type="date" class="dde" value="${it.e}"></label>${!ended?`<button class="btn-add closedelay">⏹️ סגור עיכוב</button>`:""}<span class="ddur"></span>`}
+</div>
+<div class="dnote"></div>`;
+el.querySelector(".dcause").addEventListener("input",e=>{it.cause=e.target.value;save();});
+el.querySelector(".xdel").onclick=()=>{p.items.splice(p.items.indexOf(it),1);save();render();};
+const sd=el.querySelector(".startdelay");if(sd)sd.onclick=()=>{it.s=today();save();render();};
+const cd=el.querySelector(".closedelay");if(cd)cd.onclick=()=>{it.e=today();save();render();};
+const dds=el.querySelector(".dds");if(dds)dds.addEventListener("input",e=>{it.s=e.target.value;save();recalc(p);});
+const dde=el.querySelector(".dde");if(dde)dde.addEventListener("input",e=>{it.e=e.target.value;save();recalc(p);});
+setupDrag(el,it,p);
+return el;
+}
+function buildZone(p,it){
+const z=document.createElement("div");z.className="zone";
+const bd=document.createElement("button");bd.className="btn-add";bd.textContent="⏳ הוסף עיכוב";
+bd.onclick=()=>{const idx=p.items.indexOf(it);p.items.splice(idx+1,0,newDelayItem());save();render();};
+const bs=document.createElement("button");bs.className="btn-add";bs.textContent="➕ הוסף שלב";
+bs.onclick=()=>openPicker(it.id);
+z.appendChild(bd);z.appendChild(bs);
+return z;
+}
+function setupDrag(el,it,p){
+const h=el.querySelector(".drag");if(!h)return;
+h.draggable=true;
+h.addEventListener("dragstart",e=>{dragItem=it;dragProj=p;el.classList.add("dragging");e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",it.id);e.dataTransfer.setDragImage(el,20,16);}catch(_){}});
+h.addEventListener("dragend",()=>{el.classList.remove("dragging");dragItem=null;dragProj=null;document.querySelectorAll(".drop-before").forEach(x=>x.classList.remove("drop-before"));});
+}
+function dropRef(tl,y){
+const els=[...tl.querySelectorAll(".stage,.delay")].filter(el=>!el.classList.contains("dragging"));
+for(const el of els){const r=el.getBoundingClientRect();if(y<r.top+r.height/2)return el;}
+return null;
+}
+function attachDnD(p,tl){
+tl.addEventListener("dragover",e=>{
+if(!dragItem||dragProj!==p)return;
+e.preventDefault();
+tl.querySelectorAll(".drop-before").forEach(x=>x.classList.remove("drop-before"));
+const ref=dropRef(tl,e.clientY);if(ref)ref.classList.add("drop-before");
+});
+tl.addEventListener("drop",e=>{
+if(!dragItem||dragProj!==p)return;
+e.preventDefault();
+const ref=dropRef(tl,e.clientY);
+const items=p.items,from=items.indexOf(dragItem);
+if(from<0)return;
+items.splice(from,1);
+let to=items.length;
+if(ref){const idx=items.findIndex(x=>x.id===ref.dataset.id);if(idx>=0)to=idx;}
+items.splice(to,0,dragItem);
+save();render();
+});
 }
 
 function recalc(p){
-let net=0,dl=0;
-p.stages.forEach((st,i)=>{
-const el=document.getElementById("dur"+i);
-if(st.s&&st.e&&days(st.s,st.e)>=0){net+=days(st.s,st.e);if(el)el.textContent=wk(days(st.s,st.e));}
-else if(el)el.textContent="";
-if(st.d){
-const de=document.getElementById("ddur"+i),note=document.getElementById("dnote"+i);
-if(st.d.s&&st.d.e&&days(st.d.s,st.d.e)>=0){dl+=days(st.d.s,st.d.e);de.textContent=wk(days(st.d.s,st.d.e));note.textContent="";}
-else if(st.d.s&&!st.d.e){
-const run=days(st.d.s,today());
-if(run>=0){dl+=run;de.textContent=wk(run)+" ⏳";note.textContent="עיכוב פתוח — נספר עד היום. השלב הבא ייספר רק מתאריך הסיום";}
-}
-else{de.textContent="";note.textContent="";}
+let net=0,dl=0;const app=document.getElementById("app");
+p.items.forEach(it=>{
+const el=app.querySelector('[data-id="'+it.id+'"]');
+if(it.type==="stage"){
+const dur=el&&el.querySelector(".dur");
+if(it.s&&it.e&&days(it.s,it.e)>=0){net+=days(it.s,it.e);if(dur)dur.textContent=wk(days(it.s,it.e));}
+else if(dur)dur.textContent="";
+}else{
+const de=el&&el.querySelector(".ddur"),note=el&&el.querySelector(".dnote");
+if(it.s&&it.e&&days(it.s,it.e)>=0){dl+=days(it.s,it.e);if(de)de.textContent=wk(days(it.s,it.e));if(note)note.textContent="";}
+else if(it.s&&!it.e){const run=days(it.s,today());if(run>=0){dl+=run;if(de)de.textContent=wk(run)+" ⏳";if(note)note.textContent="עיכוב פעיל — נספר עד היום. לחץ 'סגור עיכוב' או הוסף תאריך 'עד'.";}}
+else{if(de)de.textContent="";if(note)note.textContent="";}
 }
 });
-document.getElementById("net").textContent=net?wk(net):"—";
-document.getElementById("dly").textContent=dl?wk(dl):"—";
-const all=[];
-p.stages.forEach(s=>{if(s.s)all.push(s.s);if(s.e)all.push(s.e);});
-if(all.length>=2){all.sort();document.getElementById("gross").textContent=(days(all[0],all[all.length-1])/30.4).toFixed(1)+" חודשים";}
-else document.getElementById("gross").textContent="—";
+const netEl=document.getElementById("net");if(netEl)netEl.textContent=net?wk(net):"—";
+const dlyEl=document.getElementById("dly");if(dlyEl)dlyEl.textContent=dl?wk(dl):"—";
+const all=[];p.items.forEach(it=>{if(it.s)all.push(it.s);if(it.e)all.push(it.e);});
+const gr=document.getElementById("gross");
+if(gr){if(all.length>=2){all.sort();gr.textContent=(days(all[0],all[all.length-1])/30.4).toFixed(1)+" חודשים";}else gr.textContent="—";}
 }
 
 /* ---------- planning targets ---------- */
@@ -675,7 +737,7 @@ else if(it.status==="ontime")badge=`<span class="badge ontime">✅ בזמן</spa
 else if(it.status==="late")badge=`<span class="badge late">🔴 באיחור +${it.delta} רבע'</span>`;
 else badge=`<span class="badge early">🔵 מוקדם ${-it.delta} רבע'</span>`;
 c.innerHTML=`<div class="ctl"><button data-mv="1" title="רבעון קודם">›</button><button data-mv="-1" title="רבעון הבא">‹</button><button data-del title="הסר">✕</button></div>
-<div class="pj">🎯 ${pname}</div><div class="stg">${esc(it.t.st)}</div>${badge}`;
+<div class="pj">🎯 ${pname}</div><div class="stg">${esc(targetTitle(it.t))}</div>${badge}`;
 c.querySelector("[data-del]").onclick=()=>removeTarget(it.t);
 c.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>moveTarget(it.t,+b.dataset.mv));
 return c;
@@ -688,7 +750,7 @@ let badge;
 if(it.status==="ontime")badge=`<span class="badge ontime">✅ בזמן</span>`;
 else if(it.status==="late")badge=`<span class="badge late">🔴 +${it.delta} רבע' מהיעד</span>`;
 else badge=`<span class="badge early">🔵 ${-it.delta} רבע' לפני היעד</span>`;
-c.innerHTML=`<div class="pj">📌 ${pname}</div><div class="stg">${esc(it.t.st)}</div>${badge}`;
+c.innerHTML=`<div class="pj">📌 ${pname}</div><div class="stg">${esc(targetTitle(it.t))}</div>${badge}`;
 return c;
 }
 function removeTarget(t){state.targets=state.targets.filter(x=>x!==t);saveTargets();render();}
@@ -700,12 +762,11 @@ t.q=qKey(Math.floor(ni/4),ni%4+1);saveTargets();render();
 }
 function fillStageSelect(){
 const p=state.projects.find(x=>x.id===document.getElementById("tProject").value);
-const defTitles=DEFAULT_STAGES.map(s=>s[0]);
-let html='<optgroup label="שלבי רישוי מוכנים">'+DEFAULT_STAGES.map(s=>`<option value="${esc(s[0])}">${esc(s[0])}</option>`).join("")+'</optgroup>';
-if(p&&p.stages.length){
-const extra=p.stages.filter(s=>s.t&&!defTitles.includes(s.t));
-if(extra.length)html+='<optgroup label="שלבים בפרויקט">'+extra.map(s=>`<option value="${esc(s.t)}">${esc(s.t)}</option>`).join("")+'</optgroup>';
-}
+const existing=p?p.items.filter(it=>it.type==="stage"):[];
+const existingTitles=existing.map(s=>s.t);
+let html="";
+if(existing.length)html+='<optgroup label="שלבים שכבר בפרויקט">'+existing.map(s=>`<option value="sid:${s.id}">${esc(s.t)}</option>`).join("")+'</optgroup>';
+html+='<optgroup label="שלבי רישוי מוכנים">'+DEFAULT_STAGES.map(s=>`<option value="new:${esc(s[0])}">${esc(s[0])}${existingTitles.includes(s[0])?" ✓":""}</option>`).join("")+'</optgroup>';
 html+='<option value="__custom__">➕ שלב אחר (טקסט חופשי)…</option>';
 document.getElementById("tStage").innerHTML=html;
 toggleCustomStage();
@@ -728,30 +789,37 @@ document.getElementById("tClose").onclick=()=>document.getElementById("tmodal").
 document.getElementById("tmodal").addEventListener("click",e=>{if(e.target.id==="tmodal")document.getElementById("tmodal").style.display="none";});
 document.getElementById("tAdd").onclick=()=>{
 const pid=document.getElementById("tProject").value;
-const sel=document.getElementById("tStage").value;
+const val=document.getElementById("tStage").value;
 const q=document.getElementById("tQuarter").value;
 const p=state.projects.find(x=>x.id===pid);
 if(!p){alert("בחר פרויקט");return;}
-let title=sel==="__custom__"?document.getElementById("tCustomStage").value.trim():sel;
+let sid,title;
+if(val.indexOf("sid:")===0){sid=val.slice(4);const st=stageById(p,sid);title=st?st.t:"";}
+else{
+if(val==="__custom__")title=document.getElementById("tCustomStage").value.trim();
+else title=val.slice(val.indexOf(":")+1);
 if(!title){alert("בחר או הקלד שלב");return;}
-const si=p.stages.findIndex(s=>s.t===title);
-state.targets.push({id:uid(),pid:pid,st:title,si:si,q:q});
+const st=newStageItem(title,catForTitle(title));
+p.items.push(st);sid=st.id;
+queueSync(p.id);
+}
+state.targets.push({id:uid(),pid:pid,sid:sid,title:title,q:q});
 saveTargets();
 document.getElementById("tmodal").style.display="none";
 render();
 };
 
 /* ---------- stage picker ---------- */
-let pickerIndex=null;
-function openPicker(index){
-pickerIndex=index;
+let pickerAfterId=null;
+function openPicker(afterId){
+pickerAfterId=afterId;
 const list=document.getElementById("pickList");
 list.innerHTML="";
-DEFAULT_STAGES.forEach((s,i)=>{
+DEFAULT_STAGES.forEach((s)=>{
 const it=document.createElement("div");
 it.className="pick-item";
 it.innerHTML=`<span class="pick-ico tint-${s[1]}">${CAT_ICON[s[1]]}</span><span>${esc(s[0])}</span>`;
-it.onclick=()=>{addStage(newStage(s[0],s[1]));it.className="pick-item added";it.querySelector("span:last-child").textContent="✓ "+s[0];};
+it.onclick=()=>{addStage(newStageItem(s[0],s[1]));it.className="pick-item added";it.querySelector("span:last-child").textContent="✓ "+s[0];};
 list.appendChild(it);
 });
 document.getElementById("customStage").value="";
@@ -759,25 +827,25 @@ document.getElementById("picker").style.display="flex";
 setTimeout(()=>document.getElementById("customStage").focus(),50);
 }
 function closePicker(){document.getElementById("picker").style.display="none";}
-function addStage(stage){
+function addStage(stageItem){
 const p=proj();if(!p)return;
-if(pickerIndex==null||pickerIndex<0)p.stages.push(stage);
-else{p.stages.splice(pickerIndex+1,0,stage);pickerIndex++;}
+if(pickerAfterId==null)p.items.push(stageItem);
+else{const idx=p.items.findIndex(x=>x.id===pickerAfterId);if(idx<0)p.items.push(stageItem);else{p.items.splice(idx+1,0,stageItem);pickerAfterId=stageItem.id;}}
 save();render();
 }
 document.getElementById("addCustom").onclick=()=>{
 const inp=document.getElementById("customStage");const v=inp.value.trim();
-if(v){addStage(newStage(v,"p"));inp.value="";inp.focus();}
+if(v){addStage(newStageItem(v,"p"));inp.value="";inp.focus();}
 };
 document.getElementById("customStage").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("addCustom").click();});
-document.getElementById("addAll").onclick=()=>{DEFAULT_STAGES.forEach(s=>addStage(newStage(s[0],s[1])));closePicker();};
+document.getElementById("addAll").onclick=()=>{DEFAULT_STAGES.forEach(s=>addStage(newStageItem(s[0],s[1])));closePicker();};
 document.getElementById("closePicker").onclick=closePicker;
 document.getElementById("picker").addEventListener("click",e=>{if(e.target.id==="picker")closePicker();});
 
 document.getElementById("newProj").onclick=()=>{
 const name=prompt("שם הפרויקט (למשל: ישראל מריזין 5):");
 if(!name||!name.trim())return;
-const p={id:uid(),name:name.trim(),stages:[]};
+const p={id:uid(),name:name.trim(),items:[]};
 state.projects.push(p);state.cur=p.id;setView("projects");save();render();
 };
 document.getElementById("excelBtn").onclick=()=>{
@@ -793,24 +861,26 @@ if(!state.projects.length){alert("אין פרויקטים לייצוא");return;
 const wb=XLSX.utils.book_new();
 wb.Workbook={Views:[{RTL:true}]};
 state.projects.forEach(p=>{
-const rows=[["#","שלב","קטגוריה","תאריך","תאריך סיום","משך (שבועות)","גורם מעכב","עיכוב מתאריך","עיכוב עד","משך עיכוב (שבועות)"]];
-let net=0,dl=0;
-p.stages.forEach((st,i)=>{
-const durD=(st.s&&st.e&&days(st.s,st.e)>=0)?days(st.s,st.e):null;
+const rows=[["#","סוג","שלב / גורם מעכב","קטגוריה","תאריך התחלה","תאריך סיום","משך (שבועות)"]];
+let net=0,dl=0,no=0;
+p.items.forEach(it=>{
+if(it.type==="stage"){no++;
+const durD=(it.s&&it.e&&days(it.s,it.e)>=0)?days(it.s,it.e):null;
 if(durD!=null)net+=durD;
-let dcause="",dds="",dde="",ddur=null;
-if(st.d){
-dcause=st.d.cause||"";dds=st.d.s||"";dde=st.d.e||"";
-if(st.d.s&&st.d.e&&days(st.d.s,st.d.e)>=0)ddur=days(st.d.s,st.d.e);
-else if(st.d.s&&!st.d.e){const r=days(st.d.s,today());if(r>=0){ddur=r;dde="פתוח (עד היום)";}}
+rows.push([no,"שלב",it.t,CAT_NAMES[it.c],it.s||"",it.e||"",durD!=null?+(durD/7).toFixed(1):""]);
+}else{
+let ddur=null,eLabel=it.e||"";
+if(it.s&&it.e&&days(it.s,it.e)>=0)ddur=days(it.s,it.e);
+else if(it.s&&!it.e){const r=days(it.s,today());if(r>=0){ddur=r;eLabel="פתוח (עד היום)";}}
 if(ddur!=null)dl+=ddur;
+rows.push(["","עיכוב",it.cause||"","",it.s||"",eLabel,ddur!=null?+(ddur/7).toFixed(1):""]);
 }
-rows.push([i+1,st.t,CAT_NAMES[st.c],st.s||"",st.e||"",durD!=null?+(durD/7).toFixed(1):"",dcause,dds,dde,ddur!=null?+(ddur/7).toFixed(1):""]);
 });
 rows.push([]);
-rows.push(["","סה\"כ עבודה נטו (שבועות)","","","",+(net/7).toFixed(1),"סה\"כ עיכובים (שבועות)","","",+(dl/7).toFixed(1)]);
+rows.push(["","","סה\"כ עבודה נטו (שבועות)","","","",+(net/7).toFixed(1)]);
+rows.push(["","","סה\"כ עיכובים (שבועות)","","","",+(dl/7).toFixed(1)]);
 const ws=XLSX.utils.aoa_to_sheet(rows);
-ws["!cols"]=[{wch:4},{wch:52},{wch:24},{wch:13},{wch:13},{wch:15},{wch:30},{wch:13},{wch:15},{wch:18}];
+ws["!cols"]=[{wch:4},{wch:8},{wch:52},{wch:24},{wch:13},{wch:15},{wch:15}];
 let base=(p.name.replace(/[\\\/\?\*\[\]:]/g," ").trim()||"פרויקט").slice(0,31),name=base,n=1;
 while(wb.SheetNames.includes(name))name=base.slice(0,28)+" "+(++n);
 XLSX.utils.book_append_sheet(wb,ws,name);
@@ -828,7 +898,7 @@ document.getElementById("importBtn").onclick=()=>document.getElementById("import
 document.getElementById("importFile").addEventListener("change",e=>{
 const f=e.target.files[0];if(!f)return;
 const r=new FileReader();
-r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects){state=d;cacheLocal();render();pushAll();}else alert("קובץ לא תקין");}catch(err){alert("קובץ לא תקין");}};
+r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects){state=d;if(!Array.isArray(state.targets))state.targets=[];(state.projects||[]).forEach(normProject);normTargets();cacheLocal();render();pushAll();}else alert("קובץ לא תקין");}catch(err){alert("קובץ לא תקין");}};
 r.readAsText(f);
 });
 
