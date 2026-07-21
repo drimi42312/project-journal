@@ -132,6 +132,26 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 .tcard .ctl button:hover{background:rgba(0,0,0,.07);color:var(--text)}
 .addtgt{margin-top:auto;border:1px dashed var(--border2);color:var(--muted);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:13px}
 .addtgt:hover{border-color:var(--text);color:var(--text)}
+.archsel{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--muted)}
+.archsel select{font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border2);border-radius:8px;background:var(--card);color:var(--text)}
+.archlbl{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.archin{font-family:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border2);border-radius:8px;background:var(--card);color:var(--text);width:150px}
+.archin:focus,.archsel select:focus{outline:none;border-color:var(--purple)}
+.print-only{display:none}
+.print-title{font-size:20px;font-weight:700;margin-bottom:12px}
+@media print{
+@page{size:A3 portrait;margin:12mm}
+html,body{background:#fff!important}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+header,.sidebar,#settingsMenu,.sync,.drag,.zone,.addtgt,.toolbar .btn,.archlbl,.tgt-head .toggle,.tgt-head .archsel,#printBtn,.ctl{display:none!important}
+.layout{display:block;max-width:none;margin:0}
+.content{padding:0}
+.print-only{display:block!important}
+.tgt-head .tgt-title{display:none}
+.board{overflow:visible;border:1px solid #ccc}
+.qcol{min-height:auto}
+.tcard,.stage,.delay,.summary,.qcol,.yearcol{break-inside:avoid}
+}
 .tab.tgttab{border-color:var(--purple);color:var(--purple)}
 .tab.tgttab.active{background:var(--purple);color:#fff;border-color:var(--purple)}
 /* sync + auth */
@@ -159,6 +179,7 @@ input[type=date]:focus{outline:none;border-color:var(--purple)}
 <button id="excelBtn">📊 ייצוא לאקסל</button>
 <button id="exportBtn">💾 גיבוי לקובץ</button>
 <button id="importBtn">↩︎ שחזור מגיבוי</button>
+<button id="printBtn2">🖨️ הדפסה (A3)</button>
 <div class="sep"></div>
 <span class="who" id="userEmail">👤 מחובר</span>
 <button id="logoutBtn">🚪 יציאה</button>
@@ -259,6 +280,7 @@ if(!Array.isArray(state.targets))state.targets=[];
 (state.projects||[]).forEach(normProject);normTargets();
 let view=localStorage.getItem("pj-view")||"projects";
 let layers={target:true,actual:true};
+let targetArchFilter=localStorage.getItem("pj-arch")||"";
 
 /* ---------- cloud sync layer ---------- */
 let TOKEN=localStorage.getItem("pj-token")||"";
@@ -291,7 +313,7 @@ if(!p||!TOKEN)return;
 const pos=state.projects.findIndex(x=>x.id===id);
 try{
 const r=await fetch(API_BASE+"/project",{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),
-body:JSON.stringify({id:p.id,name:p.name,items:p.items,pos:pos<0?0:pos,updated_by:CLIENT_ID})});
+body:JSON.stringify({id:p.id,name:p.name,items:p.items,architect:p.architect||"",pos:pos<0?0:pos,updated_by:CLIENT_ID})});
 if(!r.ok)throw new Error(r.status);
 dirty.delete(id);setStatus("synced");
 }catch(e){dirty.add(id);setStatus("offline");}
@@ -328,7 +350,7 @@ const d=await r.json();
 const rows=d.projects||[];
 const tRow=rows.find(x=>x.id===TARGETS_ID);
 if(tRow&&Array.isArray(tRow.stages))state.targets=tRow.stages;
-const cloud=rows.filter(x=>x.id!==TARGETS_ID).map(x=>normProject({id:x.id,name:x.name,items:x.items,stages:x.stages,pos:x.pos}));
+const cloud=rows.filter(x=>x.id!==TARGETS_ID).map(x=>normProject({id:x.id,name:x.name,items:x.items,stages:x.stages,architect:x.architect||"",pos:x.pos}));
 const migrated=localStorage.getItem("pj-migrated");
 if(cloud.length===0&&state.projects.length>0&&!migrated){
 // כניסה ראשונה: העלאת פרויקטים שהיו שמורים מקומית אל הענן (מיגרציה חד-פעמית)
@@ -355,7 +377,7 @@ if(msg.type==="upsert"){
 const n=msg.project;
 if(!n||n.updated_by===CLIENT_ID)return; // ignore our own echo
 if(n.id===TARGETS_ID){state.targets=Array.isArray(n.stages)?n.stages:[];normTargets();cacheLocal();rerenderSafe();return;}
-const inc=normProject({id:n.id,name:n.name,items:n.items,stages:n.stages,pos:n.pos});
+const inc=normProject({id:n.id,name:n.name,items:n.items,stages:n.stages,architect:n.architect||"",pos:n.pos});
 const i=state.projects.findIndex(p=>p.id===inc.id);
 if(i<0)state.projects.push(inc);else state.projects[i]=inc;
 state.projects.sort((a,b)=>(a.pos||0)-(b.pos||0));
@@ -389,7 +411,8 @@ document.getElementById("auth").style.display="flex";
 const btn=document.getElementById("settingsBtn"),menu=document.getElementById("settingsMenu");
 btn.onclick=e=>{e.stopPropagation();menu.classList.toggle("open");};
 document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==btn)menu.classList.remove("open");});
-["excelBtn","exportBtn","importBtn","logoutBtn"].forEach(id=>document.getElementById(id).addEventListener("click",()=>menu.classList.remove("open")));
+document.getElementById("printBtn2").onclick=()=>window.print();
+["excelBtn","exportBtn","importBtn","printBtn2","logoutBtn"].forEach(id=>document.getElementById(id).addEventListener("click",()=>menu.classList.remove("open")));
 })();
 async function tryLogin(token){
 try{
@@ -459,6 +482,7 @@ return w+" שב'";
 function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function today(){return new Date().toISOString().slice(0,10)}
 function qidx(y,q){return y*4+(q-1)}
+function idxToYQ(idx){return {y:Math.floor(idx/4),q:idx%4+1}}
 function qKey(y,q){return y+"-Q"+q}
 function parseQ(k){const m=/^(\d+)-Q(\d)$/.exec(k||"");if(!m)return null;const y=+m[1],q=+m[2];return {y,q,idx:qidx(y,q)}}
 function quarterOfDate(ds){if(!ds)return null;const d=new Date(ds);if(isNaN(d))return null;const y=d.getFullYear(),q=Math.floor(d.getMonth()/3)+1;return {y,q,idx:qidx(y,q)}}
@@ -506,9 +530,11 @@ app.innerHTML="";
 const bar=document.createElement("div");
 bar.className="toolbar";
 bar.innerHTML=`<span class="pname">📁 ${esc(p.name)}</span>
+<label class="archlbl">👤 <input class="archin" id="projArch" value="${esc(p.architect||'')}" placeholder="אדריכל אחראי"></label>
 <button class="btn" id="renameProj">✏️ שינוי שם</button>
 <button class="btn" id="delProj">🗑️ מחיקה</button>`;
 app.appendChild(bar);
+bar.querySelector("#projArch").addEventListener("input",e=>{p.architect=e.target.value;save();});
 bar.querySelector("#renameProj").onclick=()=>{const n=prompt("שם חדש לפרויקט:",p.name);if(n&&n.trim()){p.name=n.trim();save();render();}};
 bar.querySelector("#delProj").onclick=()=>{if(confirm('למחוק את הפרויקט "'+p.name+'"? פעולה זו אינה הפיכה.')){const id=p.id;state.projects=state.projects.filter(x=>x.id!==id);state.cur=state.projects.length?state.projects[0].id:null;removeProjectRemote(id);cacheLocal();render();}};
 
@@ -667,7 +693,13 @@ if(gr){if(all.length>=2){all.sort();gr.textContent=(days(all[0],all[all.length-1
 /* ---------- planning targets ---------- */
 function renderTargets(app){
 app.innerHTML="";
-const items=state.targets.map(t=>{
+const archs=[...new Set(state.projects.map(p=>(p.architect||"").trim()).filter(Boolean))].sort();
+if(targetArchFilter&&!archs.includes(targetArchFilter))targetArchFilter="";
+const items=state.targets.filter(t=>{
+if(!targetArchFilter)return true;
+const p=state.projects.find(x=>x.id===t.pid);
+return p&&(p.architect||"").trim()===targetArchFilter;
+}).map(t=>{
 const p=state.projects.find(x=>x.id===t.pid);
 const tq=parseQ(t.q);
 const aq=actualQuarter(t);
@@ -680,10 +712,15 @@ const head=document.createElement("div");
 head.className="tgt-head";
 head.innerHTML=`<span class="tgt-title">🎯 יעדי תכנון</span>
 <span class="toggle tg${layers.target?" on":""}" id="tgTarget"><span class="sw"></span>יעדים</span>
-<span class="toggle ac${layers.actual?" on":""}" id="tgActual"><span class="sw"></span>בפועל</span>`;
+<span class="toggle ac${layers.actual?" on":""}" id="tgActual"><span class="sw"></span>בפועל</span>
+<label class="archsel">👤 <select id="archFilter"><option value="">כל האדריכלים</option>${archs.map(a=>`<option value="${esc(a)}"${targetArchFilter===a?" selected":""}>${esc(a)}</option>`).join("")}</select></label>
+<button class="btn" id="printBtn">🖨️ הדפסה</button>`;
 app.appendChild(head);
 head.querySelector("#tgTarget").onclick=()=>{layers.target=!layers.target;render();};
 head.querySelector("#tgActual").onclick=()=>{layers.actual=!layers.actual;render();};
+head.querySelector("#archFilter").onchange=e=>{targetArchFilter=e.target.value;localStorage.setItem("pj-arch",targetArchFilter);render();};
+head.querySelector("#printBtn").onclick=()=>window.print();
+const pt=document.createElement("div");pt.className="print-only print-title";pt.textContent="יעדי תכנון"+(targetArchFilter?(" — אדריכל: "+targetArchFilter):"");app.appendChild(pt);
 
 const lg=document.createElement("div");
 lg.className="legend";
@@ -700,33 +737,40 @@ e.innerHTML='<div class="big">🎯</div><p>כדי להוסיף יעדים צרי
 app.appendChild(e);return;
 }
 
+const cq=quarterOfDate(today());
+const winStart=cq.idx;
+const win=[0,1,2,3].map(k=>{const idx=winStart+k;const yq=idxToYQ(idx);return {idx,y:yq.y,q:yq.q};});
 const board=document.createElement("div");
 board.className="board";
-const nowQ=quarterOfDate(today());
-YEARS.forEach(y=>{
+let gi=0;
+while(gi<win.length){
+const y=win[gi].y;
+const group=win.filter(w=>w.y===y);
 const yc=document.createElement("div");yc.className="yearcol";
 let cols="";
-for(let q=1;q<=4;q++){
-const isNow=nowQ&&nowQ.y===y&&nowQ.q===q;
+group.forEach(w=>{
+const isNow=w.idx===cq.idx;
 cols+=`<div class="qcol${isNow?" now":""}">
-<div class="qhead${isNow?" now":""}">רבעון ${q}${isNow?" · היום":""}</div>
-<div class="qbody" data-qb="${qKey(y,q)}"></div></div>`;
-}
+<div class="qhead${isNow?" now":""}">רבעון ${w.q}${isNow?" · הנוכחי":""}</div>
+<div class="qbody" data-qb="${qKey(w.y,w.q)}"></div></div>`;
+});
 yc.innerHTML=`<div class="yearhead">${y}</div><div class="quarters">${cols}</div>`;
 board.appendChild(yc);
-});
+gi+=group.length;
+}
 app.appendChild(board);
 
-YEARS.forEach(y=>{for(let q=1;q<=4;q++){
-const body=board.querySelector(`[data-qb="${qKey(y,q)}"]`);
-const idx=qidx(y,q);
-if(layers.target)items.filter(it=>it.tq&&it.tq.idx===idx).forEach(it=>body.appendChild(targetCard(it)));
-if(layers.actual)items.filter(it=>it.aq&&it.aq.idx===idx).forEach(it=>body.appendChild(actualCard(it)));
+win.forEach(w=>{
+const body=board.querySelector(`[data-qb="${qKey(w.y,w.q)}"]`);
+if(layers.target)items.filter(it=>it.tq&&it.tq.idx===w.idx).forEach(it=>body.appendChild(targetCard(it)));
+if(layers.actual)items.filter(it=>it.aq&&it.aq.idx===w.idx).forEach(it=>body.appendChild(actualCard(it)));
 const add=document.createElement("button");
 add.className="addtgt";add.textContent="＋ יעד";
-add.onclick=()=>openTargetModal(qKey(y,q));
+add.onclick=()=>openTargetModal(qKey(w.y,w.q));
 body.appendChild(add);
-}});
+});
+const outCount=items.filter(it=>it.tq&&(it.tq.idx<winStart||it.tq.idx>winStart+3)).length;
+if(outCount){const note=document.createElement("div");note.style.cssText="font-size:13px;color:var(--muted);margin-top:14px";note.textContent=`ℹ️ ${outCount} יעדים מתוכננים מחוץ ל‑4 הרבעונים המוצגים (עבר או עתיד רחוק).`;app.appendChild(note);}
 }
 function targetCard(it){
 const c=document.createElement("div");c.className="tcard plan"+(it.p?"":" ghost");
@@ -756,9 +800,10 @@ return c;
 function removeTarget(t){state.targets=state.targets.filter(x=>x!==t);saveTargets();render();}
 function moveTarget(t,delta){
 const cur=parseQ(t.q);if(!cur)return;
-const lo=qidx(YEARS[0],1),hi=qidx(YEARS[2],4);
+const cq=quarterOfDate(today());
+const lo=cq.idx-8,hi=cq.idx+15;
 const ni=Math.max(lo,Math.min(hi,cur.idx+delta));
-t.q=qKey(Math.floor(ni/4),ni%4+1);saveTargets();render();
+const yq=idxToYQ(ni);t.q=qKey(yq.y,yq.q);saveTargets();render();
 }
 function fillStageSelect(){
 const p=state.projects.find(x=>x.id===document.getElementById("tProject").value);
@@ -778,7 +823,8 @@ function openTargetModal(presetQ){
 const ps=document.getElementById("tProject");
 ps.innerHTML=state.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
 fillStageSelect();
-let opts="";YEARS.forEach(y=>{for(let q=1;q<=4;q++){const k=qKey(y,q);opts+=`<option value="${k}"${k===presetQ?" selected":""}>${y} · רבעון ${q}</option>`;}});
+const cq=quarterOfDate(today());let opts="";
+for(let k=0;k<8;k++){const yq=idxToYQ(cq.idx+k);const key=qKey(yq.y,yq.q);opts+=`<option value="${key}"${key===presetQ?" selected":""}>${yq.y} · רבעון ${yq.q}${k===0?" (הנוכחי)":""}</option>`;}
 document.getElementById("tQuarter").innerHTML=opts;
 document.getElementById("tCustomStage").value="";
 document.getElementById("tmodal").style.display="flex";
